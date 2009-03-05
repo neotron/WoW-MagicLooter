@@ -1,0 +1,18 @@
+## Interface: 30000
+## Title: Magic Looter
+## Notes: A loot distribution addon meant to improve master looting during raids.
+## Author: NeoTron
+## Version: 1.0
+## DefaultState: enabled
+## X-Category: Raid
+## X-eMail: neotron@gmail.com
+
+## OptionalDeps: Ace3, LibLogger-1.0, LibBabble-Boss-3.0, LibBabble-Zone-3.0
+## X-Embeds: Ace3, LibLogger-1.0, LibBabble-Boss-3.0, LibBabble-Zone-3.0
+## SavedVariables: MagicLooterDB
+
+# Library files
+embeds.xml
+Locales.xml
+MagicLooter.lua
+Config.lua
