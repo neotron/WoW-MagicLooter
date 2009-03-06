@@ -130,19 +130,23 @@ function mod:CheckLoot()
 		  disenchanter = mod:GetLooterCandidate(db.disenchanterList, masterLootCandidates)
 	       end
 	       recipient = disenchanter
-	       if db.announceLoot then
-		  mod:Print(L["Auto-looting %s to %s for disenchanting."], link, tostring(GetMasterLootCandidate(recipient)))
+	       if recipient and db.announceLoot then
+		  mod:Print(string.format(L["Auto-looting %s to %s for disenchanting."], link, tostring(GetMasterLootCandidate(recipient))))
 	       end
 	    else
 	       if not banker then
 		  banker = mod:GetLooterCandidate(db.bankerList, masterLootCandidates)
 	       end	       
 	       recipient = banker
-	       if db.announceLoot then
-		  mod:Print(L["Auto-looting %s to %s for banking."], link, tostring(GetMasterLootCandidate(recipient)))
+	       if recipient and  db.announceLoot then
+		  mod:Print(string.format(L["Auto-looting %s to %s for banking."], link, tostring(GetMasterLootCandidate(recipient))))
 	       end
 	    end
-	    GiveMasterLoot(slot, recipient)
+	    if not recipient then
+	       mod:Print(L["Warning: No recipient found?"])
+	    else
+	       GiveMasterLoot(slot, recipient)
+	    end
 	 end
       end
    end
@@ -167,6 +171,7 @@ function mod:GetLooterCandidate(list, masterLootCandidates)
    if not recipient then
       recipient = masterLootCandidates[playerName]
    end 
+   return recipient
 end
 
 -- Return whether the item can be disenchanted or not
