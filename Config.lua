@@ -120,7 +120,6 @@ function mod:SetProfileParam(var, value)
 	 player = player:lower():trim():gsub("^.", string.upper)
 	 if strlen(player) then
 	    newValues[#newValues + 1] = player
-	    mod:Print("Found player: ", player)
 	 end
       end
       value = newValues
@@ -134,7 +133,6 @@ function mod:GetProfileParam(var)
    if varName == "autoLootThreshold" or varName == "disenchantThreshold" then
       return db[varName] - 1
    elseif varName == "disenchanterList" or varName == "bankerList" then
-      mod:Print("loaded value:" ,unpack(db[varName]))
       return strjoin("\n", unpack(db[varName]))
    end
    return db[varName]
