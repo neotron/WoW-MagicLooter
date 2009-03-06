@@ -22,7 +22,7 @@ along with MagicLooter.  If not, see <http://www.gnu.org/licenses/>.
 local MINOR_VERSION = tonumber(("$Revision$"):match("%d+"))
 
 MagicLooter = LibStub("AceAddon-3.0"):NewAddon("MagicLooter", "AceConsole-3.0",
-					    "AceEvent-3.0", "AceTimer-3.0", "LibLogger-1.0")
+					    "AceEvent-3.0", "AceTimer-3.0")
 MagicLooter.MAJOR_VERSION = "MagicLooter-1.0"
 MagicLooter.MINOR_VERSION = MINOR_VERSION
 
