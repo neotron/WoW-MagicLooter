@@ -16,3 +16,4 @@ embeds.xml
 Locales.xml
 MagicLooter.lua
 Config.lua
+modules.xml

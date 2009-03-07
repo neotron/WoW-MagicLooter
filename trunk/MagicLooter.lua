@@ -39,6 +39,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("MagicLooter", false)
 
 local UnitGUID = UnitGUID
 local sub = string.sub
+local tsort = table.sort
 
 local defaultOptions = {
    profile = {
@@ -84,6 +85,8 @@ function mod:OnInitialize()
 	 LDBIcon:Register("MagicLooter", self.ldb, mod.db.profile.minimapIcon)
       end
    end
+
+   mod.masterLootCandidates = {}
 end
 
 function mod:OnEnable()
@@ -95,25 +98,24 @@ function mod:OnDisable()
    mod:UnregisterEvent("LOOT_OPENED")
 end
 
-local masterLootCandidates = {}
 function mod:CheckLoot()
    local method, mlparty = GetLootMethod()
    if method ~= "master" or mlparty ~= 0 then
       return -- not using master looter
    end
-   for id in pairs(masterLootCandidates) do
-      masterLootCandidates[id] = nil
+   for id in pairs(mod.masterLootCandidates) do
+      mod.masterLootCandidates[id] = nil
    end
 
    local numItems = GetNumLootItems()
    local banker, disenchanter, link
    local curslot = 0
    
-   -- Build a list of all master loot candidates
+   -- Build a list of all master loot cand>idates
    for ci = 1, 40 do
       local candidate = GetMasterLootCandidate(ci)
       if candidate then
-	 masterLootCandidates[candidate] = ci
+	 mod.masterLootCandidates[candidate] = ci
       end
    end
 
@@ -127,7 +129,7 @@ function mod:CheckLoot()
 	    local recipient
 	    if mod:IsDisenchantable(link) then
 	       if not disenchanter then
-		  disenchanter = mod:GetLooterCandidate(db.disenchanterList, masterLootCandidates)
+		  disenchanter = mod:GetLooterCandidate(db.disenchanterList)
 	       end
 	       recipient = disenchanter
 	       if recipient and db.announceLoot then
@@ -135,7 +137,7 @@ function mod:CheckLoot()
 	       end
 	    else
 	       if not banker then
-		  banker = mod:GetLooterCandidate(db.bankerList, masterLootCandidates)
+		  banker = mod:GetLooterCandidate(db.bankerList)
 	       end	       
 	       recipient = banker
 	       if recipient and  db.announceLoot then
@@ -157,19 +159,23 @@ function mod:OnProfileChanged()
    mod:NotifyChange()
 end
 
-function mod:GetLooterCandidate(list, masterLootCandidates)
+function mod:LootCandidateID(name)
+   return mod.masterLootCandidates[name]
+end
+
+function mod:GetLooterCandidate(list)
    -- Check to see if there's a preferred disenchanter recipient
    local recipient
    for _,name in pairs(list) do
-      if masterLootCandidates[name] then
-	 recipient = masterLootCandidates[name] 
+      if mod.masterLootCandidates[name] then
+	 recipient = mod.masterLootCandidates[name] 
 	 break
       end
    end
 
    -- No preferred looter found, fall back to the player
    if not recipient then
-      recipient = masterLootCandidates[playerName]
+      recipient = mod.masterLootCandidates[playerName]
    end 
    return recipient
 end
