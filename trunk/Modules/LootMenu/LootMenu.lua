@@ -24,12 +24,12 @@ local MODULE_NAME = "LootMenu"
 local mod = MagicLooter
 local module = mod:NewModule(MODULE_NAME, "AceHook-3.0", "AceEvent-3.0")
 local L = LibStub("AceLocale-3.0"):GetLocale("MagicLooter", false)
-local deformat = LibStub("LibDeformat-3.0", true)
 
 local tsort = table.sort
 local fmt = string.format
 local floor = math.floor
 local match = string.match
+local gsub = string.gsub
 
 local CLASS_COLORS = {}
 local players, playerClass = {}, {}
@@ -40,11 +40,12 @@ local classOrder = {  "DEATHKNIGHT", "DRUID", "HUNTER", "MAGE", "PALADIN", "PRIE
 local defaultOptions = {
    rollTimeout = 20,
    rollLimit = 100,
+   randomEnabled = true,
    rollMessage = L["Attention! /roll [limit] for [item]. Ends in [timeout] seconds."],
    lootMessage = L["[player] awarded [item][postfix]."],
 }
 
-local db
+local db = {}
 
 function module:OnInitialize()
    -- the main drop down menu
@@ -59,14 +60,11 @@ function module:OnInitialize()
    end
    
    -- register defaults and get db storage from the mothership
-   db = mod:GetModuleDatabase(MODULE_NAME, defaultOptions)
+   db = mod:GetModuleDatabase(MODULE_NAME, defaultOptions, module.options)
    
    module.rolls = {}
 
-   if not deformat then
-      LoadAddOn("LibDeformat-3.0")
-      deformat = LibStub("LibDeformat-3.0")
-   end   
+   
 end
 
 function module:OnProfileChanged(newdb)
@@ -159,6 +157,7 @@ end
 -- Add the menu where you can give loot to a random player
 -- We can do it via a roll or just randomly give it out
 function module:BuildRandomLoot(level)
+   if not db.randomEnabled then return end
    module:AddStaticButtons(module.staticMenus.random, level)
    if level == 2 then
       -- add info about roll in progress
@@ -371,6 +370,7 @@ do
       tsort(players)
    end
 end
+local rollPattern = gsub(gsub(gsub(RANDOM_ROLL_RESULT, "[()]", "."), "%%s", "([^ ]+)") , "%%d", "(%%d+)")
 
 function module:ParseRollChat(event, message)
    if not module.rollTimeout or module.rollTimeout < time() then
@@ -378,10 +378,12 @@ function module:ParseRollChat(event, message)
       module:UnregisterEvent("CHAT_MSG_SYSTEM")
       return 
    end
-
-   local player, roll, min, max = deformat(message, RANDOM_ROLL_RESULT)
-   if player and min == 1 and max == db.rollLimit and not module.rolls[player] then
-      module.rolls[player] = roll
+   local player, roll, min, max = match(message, rollPattern)
+   if player then
+      roll, min, max = tonumber(roll), tonumber(min), tonumber(max)
+      if  min == 1 and max == db.rollLimit and not module.rolls[player] then
+	 module.rolls[player] = roll
+      end
    end
 end
 
@@ -416,6 +418,25 @@ function mod:SendChatMessage(message, destination)
    end
    SendChatMessage(message, destination)
 end
+
+function module:SetProfileParam(var, value)
+   local varName = var[#var]
+   db[varName] = value
+end
+
+function module:GetProfileParam(var) 
+   local varName = var[#var]
+   return db[varName]
+end
+
+function module:AnnounceDisabled()
+   return not db.announceLoot
+end
+
+function module:RandomDisabled()
+   return not db.randomEnabled
+end
+
 
 module.staticMenus = {
    random = {
@@ -455,3 +476,61 @@ module.staticMenus = {
    }
 }
 
+
+-- config options
+module.options = {
+   type = "group",
+   name = L["Loot Menu"],
+   handler = module,
+   set = "SetProfileParam",
+   get = "GetProfileParam", 
+   args = {
+      randomEnabled = {
+	 type = "toggle",
+	 name = L["Enable Random Menu"],
+	 desc = L["Show the randon loot distribution menu. "],
+	 order = 10,
+      }, 
+      rollTimeout = {
+	 type = "range",
+	 name = L["Random Roll Timeout"],
+	 desc = L["Time in seconds before the random roll expires."],
+	 min = 5, max = 120, step = 1,
+	 order = 20,
+	 width="full",
+	 disabled = "RandomDisabled",
+      },
+      rollLimit = {
+	 type = "range", 
+	 name = L["Random Roll Limit"],
+	 desc = L["The upper limit for random rolls. The default is 100."],
+	 min = 5, max = 10000, step = 1,
+	 width="full",
+	 order = 30,
+	 disabled = "RandomDisabled",
+      },
+      rollMessage = {
+	 type = "input",
+	 width="full",
+	 name = L["Random Roll Message"],
+	 desc = L["The message sent to the raid or party when a new roll begins. The following tokens are available: [limit] (upper limit of roll), [item] (the item link) and [timeout] (the roll timeout)."],
+	 order = 40,
+	 disabled = "RandomDisabled",
+      },
+      announceLoot = {
+	 type = "toggle",
+	 name = L["Announce Loot Recipients"],
+	 desc = L["Print a massage, only visible by you, when Magic Looter autoloots an item."],
+	 order = 100, 
+	 width="full",
+      },
+      lootMessage = {
+	 type = "input",
+	 name = L["Loot Announce Message"],
+	 desc = L["The message sent when an item is looted. The following tokens are available: [player] (receiving player), [item] (the item link) and [postfix (optional postfix for disenchanted, banked or randomly distributed loot)."],
+	 order = 110,
+	 width="full",
+	 disabled = "AnnounceDisabled",
+      },
+   }
+}
