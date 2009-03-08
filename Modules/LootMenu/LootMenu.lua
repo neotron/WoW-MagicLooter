@@ -39,10 +39,12 @@ function module:OnDisable()
 end
 
 function module:OnEvent(this,event,...)
-   mod:Print("OnEvent(", event, ")")
+   --   mod:Print("OnEvent(", event, ")")
    local method, id = GetLootMethod()
    if event == "OPEN_MASTER_LOOT_LIST" then
       return module:ShowMenu()
+   elseif event == "LOOT_CLOSED" then
+      CloseDropDownMenus() 
    elseif event == "UPDATE_MASTER_LOOT_LIST" then
 --      return module.dewdrop:Refresh(1)
    end
@@ -89,13 +91,28 @@ function module:Dropdown_OnLoad(level)
 	 module:BuildPartyMenu(info, level)
       end
       module:AddSpacer(info)
-      module:PlayerEntry(nil, info, level)
-      module:AddSpacer(info)
+      module:BuildQuickLoot(info, level)
    elseif level == 2 then
       local submenu = UIDROPDOWNMENU_MENU_VALUE
-      if classList[submenu] then
+      if submenu == "QUICKLOOT" then
+	 module:BuildQuickLoot(info, level)
+      elseif classList[submenu] then
 	 module:BuildRaidMenu(info, level, submenu)
       end
+   end
+end
+
+function module:BuildQuickLoot(info, level)
+   if level == 1 then
+      clear(info).value = "QUICKLOOT"
+      info.text = L["Quick Loot"]
+      info.hasArrow = true
+      info.notCheckable = true
+      UIDropDownMenu_AddButton(info, level);
+   else
+      module:PlayerEntry("_self", info, level)
+      module:PlayerEntry("_banker", info, level)
+      module:PlayerEntry("_disenchant", info, level)
    end
 end
 
@@ -126,25 +143,38 @@ end
 do
    local disabledFormat =  "|cff7f7f7f%s|r" 
    function module:PlayerEntry(name, info, level)
-      local selfLoot 
-      if not name then
-	 selfLoot = true
+      local text, color, mlc
+      clear(info)
+
+      if name == "_self" then
 	 name = UnitName("player")
+	 info.text = L["Self Loot"]
+	 info.colorCode = "|cffcfffcf"
+      elseif name == "_banker" then
+	 info.text = L["Bank Loot"]
+	 info.colorCode = "|cffcfcfff"
+	 mlc = mod:GetBankLootCandidateID()
+      elseif name == "_disenchant" then
+	 info.text = L["Disenchant Loot"]
+	 info.colorCode = "|cffffcfcf"
+	 mlc = mod:GetDisenchantLootCandidateID()
+      else
+	 info.text = name
+	 info.colorCode = CLASS_COLORS[playerClass[name]]
       end
-      clear(info).value = mod:LootCandidateID(name) -- Master Looter ID
+
+      if not mlc then
+	 mlc = mod:GetLootCandidateID(name) -- Master Looter ID
+      end
+
       info.notCheckable = true
-      if info.value then
-	 if selfLoot then
-	    info.text = L["Self Loot"]
-	    info.colorCode = "|cffbbbbbb"
-	 else
-	    info.text = name
-	    info.colorCode = CLASS_COLORS[playerClass[name]]
-	 end
+      if mlc then
+	 -- this dude can loot
 	 info.func = module.AssignLoot
 	 info.arg1 = module
 	 info.arg2 = name
       else
+	 -- non-applicable recipient
 	 info.notClickable = true
 	 info.text = disabledFormat:format(name)
       end
@@ -164,32 +194,41 @@ end
 
 
 
-do
-   local data = {}
-   function module:AssignLoot(frame, recipient)
-      local mlc = mod:LootCandidateID(recipient)
-      if not mlc or not LootFrame.selectedSlot then return end
-      local icon, name, quantity, quality = GetLootSlotInfo(LootFrame.selectedSlot)
-      local link = GetLootSlotLink(LootFrame.selectedSlot)
-      if not link then return end
-      
-      data.id = mlc
-      data.name = recipient
-      data.link = link
-      data.quality = quality
-
-      -- Hook into MagicDKP if present. Check for this static dialog since it indicates a new enough
-      -- version of MagicDKP to handle external loot events
-      if _G.StaticPopupDialogs["MDKPDuplicate"] then
-	 MagicDKP:HandleLoot(recipient, tonumber(match(link, ".*|Hitem:(%d+):")), 1, false, true) -- call MagicDKP
-      end
-      mod:Print("Should assign ", link, " to ", recipient, " (", mlc, ")")
-      GiveMasterLoot(LootFrame.selectedSlot, mlc)
+function module:AssignLoot(frame, recipient)
+   local mlc, isBank, isDE
+   if recipient == "_banker" then
+      isBank = true
+      mlc = mod:GetBankLootCandidateID()
+      recipient = GetMasterLootCandidate(mlc)
+   elseif recipient == "_disenchant" then
+      isDE = true
+      mlc = mod:GetDisenchantLootCandidateID()
+      recipient = GetMasterLootCandidate(mlc)
+   else
+      mlc = mod:GetLootCandidateID(recipient)
    end
+   if not mlc or not LootFrame.selectedSlot then return end
+   local icon, name, quantity, quality = GetLootSlotInfo(LootFrame.selectedSlot)
+   local link = GetLootSlotLink(LootFrame.selectedSlot)
+   if not link then return end
+   
+   -- Hook into MagicDKP if present. Check for this static dialog since it indicates a new enough
+   -- version of MagicDKP to handle external loot events
+   if _G.StaticPopupDialogs["MDKPDuplicate"] then
+      MagicDKP:HandleLoot(recipient, tonumber(match(link, ".*|Hitem:(%d+):")), 1, false, true, isBank, isDE) -- call MagicDKP
+   end
+   if isDE or isBank then
+      mod:Print("Giving", link, "to", recipient, "for", isDE and "disenchanting" or "banking")
+   else
+      mod:Print("Assigned ", link, " to ", recipient)
+   end
+   GiveMasterLoot(LootFrame.selectedSlot, mlc)
 end
+
 
 function module:ShowMenu()
    ToggleDropDownMenu(1, nil, module.dropdown, "cursor");
+   return true
 end
 
 do

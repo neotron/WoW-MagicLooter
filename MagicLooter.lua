@@ -111,7 +111,7 @@ function mod:CheckLoot()
    local banker, disenchanter, link
    local curslot = 0
    
-   -- Build a list of all master loot cand>idates
+   -- Build a list of all master loot candidates
    for ci = 1, 40 do
       local candidate = GetMasterLootCandidate(ci)
       if candidate then
@@ -159,9 +159,18 @@ function mod:OnProfileChanged()
    mod:NotifyChange()
 end
 
-function mod:LootCandidateID(name)
+function mod:GetLootCandidateID(name)
    return mod.masterLootCandidates[name]
 end
+
+function mod:GetBankLootCandidateID()
+   return mod:GetLooterCandidate(db.bankerList)
+end
+
+function mod:GetDisenchantLootCandidateID()
+   return mod:GetLooterCandidate(db.disenchanterList)
+end
+
 
 function mod:GetLooterCandidate(list)
    -- Check to see if there's a preferred disenchanter recipient
