@@ -88,18 +88,23 @@ function mod:OnInitialize()
 
    mod.masterLootCandidates = {}
    mod.sortedLootCandidates = {}
+
+   mod:SetupOptions()
 end
 
-function mod:GetModuleDatabase(module, default)
+function mod:GetModuleDatabase(module, default, options)
+   local optionPane
    defaultOptions.profile.modules[module] = default
    self.db:RegisterDefaults(defaultOptions)
-   return db.modules[module]
+   if options then
+      optionPane = mod:RegisterModuleOptions(module, options)
+   end
+   return db.modules[module], optionPane
 end
 
 function mod:OnEnable()
    mod:RegisterEvent("LOOT_OPENED", "CheckLoot")
    mod:RegisterEvent("LOOT_CLOSED", "ClearLoot")
-   mod:SetupOptions()
 end
 
 function mod:OnDisable()

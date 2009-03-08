@@ -76,14 +76,14 @@ options = {
       },
       disenchanterList = {
 	 type = "input",
-	 multiline = "true",
+	 multiline = true,
 	 name = L["Disenchanter Priority List"],
 	 desc = L["A newline separated list of disenchanters. All disenchantable loot will be given to the people on the list in the order they appear. If none of the names are valid loot targets, the loot will be given to the player."],
 	 order = 10, 
       },
       bankerList = {
 	 type = "input",
-	 multiline = "true",
+	 multiline = true,
 	 name = L["Banker Priority List"],
 	 desc = L["A newline separated list of bankers. All loot that isn't disenchantable will be given to the people on the list in the order they appear. If none of the names are valid loot targets, the loot will be given to the player."],
 	 order = 10,
@@ -138,10 +138,71 @@ function mod:GetProfileParam(var)
    return db[varName]
 end
 
+function mod:SetProfileParam(var, value)
+   local varName = var[#var]
+   if varName == "autoLootThreshold" or varName == "disenchantThreshold" then
+      value = value + 1
+   elseif varName == "disenchanterList" or varName == "bankerList" then
+      local newValues = {}
+      for _,player in ipairs(  { strsplit("\n", value) } ) do 
+	 player = player:lower():trim():gsub("^.", string.upper)
+	 if strlen(player) then
+	    newValues[#newValues + 1] = player
+	 end
+      end
+      value = newValues
+   end
+      
+   db[varName] = value
+end
+
+function mod:GetProfileParam(var) 
+   local varName = var[#var]
+   if varName == "autoLootThreshold" or varName == "disenchantThreshold" then
+      return db[varName] - 1
+   elseif varName == "disenchanterList" or varName == "bankerList" then
+      return strjoin("\n", unpack(db[varName]))
+   end
+   return db[varName]
+end
+
+
+function mod:OptReg(optname, tbl, dispname, cmd)
+   local regtable
+   if dispname then
+      optname = "Magic Looter"..optname
+      AC:RegisterOptionsTable(optname, tbl, cmd)
+      if not cmd then
+	 regtable = ACD:AddToBlizOptions(optname, dispname, L["Magic Looter"])
+      end
+   else
+      AC:RegisterOptionsTable(optname, tbl, cmd)
+      if not cmd then
+	 regtable = ACD:AddToBlizOptions(optname, L["Magic Looter"])
+      end
+   end
+   return regtable
+end
+
+function mod:RegisterModuleOptions(module, options)
+   return mod:OptReg(": "..module, options, module)
+end
+
 function mod:SetupOptions()
-   options.profile = DBOpt:GetOptionsTable(self.db)
-   AC:RegisterOptionsTable("Magic Looter", options, "mloot")
-   mod.configFrame = ACD:AddToBlizOptions("Magic Looter", L["Magic Looter"])
+   mod.configFrame = mod:OptReg("Magic Looter", options)
+   mod.profileFrame = mod:OptReg(": Profiles", DBOpt:GetOptionsTable(mod.db), L["Profiles"])
+   mod:OptReg("Magic Looter CmdLine", {
+		 name = "Command Line",
+		 type = "group",
+		 args = {
+		    config = {
+		       type = "execute",
+		       name = L["Show configuration dialog"],
+		       func = function() mod:ToggleConfigDialog() end,
+		       dialogHidden = true
+		    },
+		 }
+	      }, nil,  { "mloot", "magiclooter" })
 end
 
 function mod:ToggleConfigDialog()
