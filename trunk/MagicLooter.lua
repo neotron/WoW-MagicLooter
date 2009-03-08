@@ -26,7 +26,6 @@ MagicLooter = LibStub("AceAddon-3.0"):NewAddon("MagicLooter", "AceConsole-3.0",
 MagicLooter.MAJOR_VERSION = "MagicLooter-1.0"
 MagicLooter.MINOR_VERSION = MINOR_VERSION
 
-local MagicComm = LibStub("MagicComm-1.0")
 local GUI = LibStub("AceGUI-3.0")
 local LDBIcon = LibStub("LibDBIcon-1.0", true)
 local LDB = LibStub("LibDataBroker-1.1", true)
@@ -38,8 +37,8 @@ local mod = MagicLooter
 local L = LibStub("AceLocale-3.0"):GetLocale("MagicLooter", false)
 
 local UnitGUID = UnitGUID
-local sub = string.sub
 local tsort = table.sort
+local gsub = string.gsub
 
 local defaultOptions = {
    profile = {
@@ -48,7 +47,8 @@ local defaultOptions = {
       disenchantThreshold = 3,
       disenchanterList = {},
       bankerList = {},
-      minimapIcon = { hide = false }
+      minimapIcon = { hide = false },
+      modules = {}
    }
 }
 
@@ -87,59 +87,65 @@ function mod:OnInitialize()
    end
 
    mod.masterLootCandidates = {}
+   mod.sortedLootCandidates = {}
+end
+
+function mod:GetModuleDatabase(module, default)
+   defaultOptions.profile.modules[module] = default
+   self.db:RegisterDefaults(defaultOptions)
+   return db.modules[module]
 end
 
 function mod:OnEnable()
    mod:RegisterEvent("LOOT_OPENED", "CheckLoot")
+   mod:RegisterEvent("LOOT_CLOSED", "ClearLoot")
    mod:SetupOptions()
 end
 
 function mod:OnDisable()
    mod:UnregisterEvent("LOOT_OPENED")
+   mod:UnregisterEvent("LOOT_CLOSED")
+end
+
+function mod:ClearLoot()
+   mod.banker = nil
+   mod.disenchanter = nil
+   for id in pairs(mod.masterLootCandidates) do
+      mod.masterLootCandidates[id] = nil
+   end
+   for id in pairs(mod.sortedLootCandidates) do
+      mod.sortedLootCandidates[id] = nil
+   end
 end
 
 function mod:CheckLoot()
    local method, mlparty = GetLootMethod()
-   if method ~= "master" or mlparty ~= 0 then
-      return -- not using master looter
-   end
-   for id in pairs(mod.masterLootCandidates) do
-      mod.masterLootCandidates[id] = nil
-   end
+   if method ~= "master" or mlparty ~= 0 then return end -- not using master looter
 
-   local numItems = GetNumLootItems()
-   local banker, disenchanter, link
-   local curslot = 0
-   
    -- Build a list of all master loot candidates
    for ci = 1, 40 do
       local candidate = GetMasterLootCandidate(ci)
       if candidate then
 	 mod.masterLootCandidates[candidate] = ci
+	 mod.sortedLootCandidates[#mod.sortedLootCandidates+1] = candidate
       end
    end
-
+   tsort(mod.sortedLootCandidates)
    
-   for slot = 1, numItems do
-      link =  GetLootSlotLink(slot)
-      icon, item, quantity, quality = GetLootSlotInfo(slot)
-      if icon and link then
+   for slot = 1, GetNumLootItems() do
+      local link =  GetLootSlotLink(slot)
+      if link then
+	 local _, _, _, quality = GetLootSlotInfo(slot)
 	 local bind = mod:GetBindOn(link)
 	 if bind ~= "pickup"  and quality <= db.autoLootThreshold and quality >= GetLootThreshold() then
 	    local recipient
 	    if mod:IsDisenchantable(link) then
-	       if not disenchanter then
-		  disenchanter = mod:GetLooterCandidate(db.disenchanterList)
-	       end
-	       recipient = disenchanter
-	       if recipient and db.announceLoot then
+	       recipient = mod:GetDisenchantLootCandidateID()
+	       if db.announceLoot then
 		  mod:Print(string.format(L["Auto-looting %s to %s for disenchanting."], link, tostring(GetMasterLootCandidate(recipient))))
 	       end
 	    else
-	       if not banker then
-		  banker = mod:GetLooterCandidate(db.bankerList)
-	       end	       
-	       recipient = banker
+	       recipient = mod:GetBankLootCandidateID()
 	       if recipient and  db.announceLoot then
 		  mod:Print(string.format(L["Auto-looting %s to %s for banking."], link, tostring(GetMasterLootCandidate(recipient))))
 	       end
@@ -157,22 +163,14 @@ end
 function mod:OnProfileChanged()
    UpdateUpvalues()
    mod:NotifyChange()
+   for name,module in mod:IterateModules() do
+      if db.modules[name] and module.OnProfileChanged then
+	 module:OnProfileChanged(db.modules[name])
+      end
+   end
 end
 
-function mod:GetLootCandidateID(name)
-   return mod.masterLootCandidates[name]
-end
-
-function mod:GetBankLootCandidateID()
-   return mod:GetLooterCandidate(db.bankerList)
-end
-
-function mod:GetDisenchantLootCandidateID()
-   return mod:GetLooterCandidate(db.disenchanterList)
-end
-
-
-function mod:GetLooterCandidate(list)
+local function GetLootCandidateFromList(list)
    -- Check to see if there's a preferred disenchanter recipient
    local recipient
    for _,name in pairs(list) do
@@ -188,6 +186,33 @@ function mod:GetLooterCandidate(list)
    end 
    return recipient
 end
+
+
+function mod:GetLootCandidateID(name)
+   return mod.masterLootCandidates[name]
+end
+
+function mod:GetBankLootCandidateID()
+   if not mod.banker then
+      mod.banker = GetLootCandidateFromList(db.bankerList)
+   end
+   return mod.banker
+end
+
+function mod:GetDisenchantLootCandidateID()
+   if not mod.disenchanter then
+      mod.disenchanter = GetLootCandidateFromList(db.disenchanterList)
+   end
+   return mod.disenchanter
+end
+
+function mod:GetRandomLootCandidate()
+   local count = #mod.sortedLootCandidates
+   if count == 0 then return end
+   local looter = mod.sortedLootCandidates[math.random(count)]
+   return looter, mod.masterLootCandidates[looter]
+end
+
 
 -- Return whether the item can be disenchanted or not
 function mod:IsDisenchantable(link)
@@ -222,4 +247,11 @@ function mod:GetBindOn(item)
    end
    tt:Hide()
    return nil
+end
+
+function mod:tokenize(str, values)
+   for k, v in pairs(values) do
+      str = gsub(str, "%["..k.."%]", (type(v) == "function" and v() or v))
+   end
+   return str
 end
