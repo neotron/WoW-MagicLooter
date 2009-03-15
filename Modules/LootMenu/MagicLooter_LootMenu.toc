@@ -1,0 +1,13 @@
+## Interface: 30000
+## Title: Magic Looter - Loot Menu
+## Notes: A Master Loot menu replacement addon
+## Author: NeoTron
+## Version: 1.0
+## DefaultState: enabled
+## X-Category: Raid
+## X-eMail: neotron@gmail.com
+## RequiredDeps: MagicLooter
+## OptionalDeps: Ace3
+
+Libs\AceHook-3,0\AceHook-3.0.xml
+LootMenu.lua

@@ -107,6 +107,11 @@ options = {
 	 name = L["Announce Loot Recipients"],
 	 desc = L["Print a massage, only visible by you, when Magic Looter autoloots an item."],
       },
+      autoloot = {
+	 type = "toggle",
+	 name = L["Enable Auto Loot"],
+	 desc = L["Automatically loot items for disenchanting and banking if they fall within the specified thresholds. If disabled, you can still use the smart looting using the MagicLooter Loot Menu addon."],
+      },
    }
 }
 
@@ -146,7 +151,7 @@ function mod:SetProfileParam(var, value)
       local newValues = {}
       for _,player in ipairs(  { strsplit("\n", value) } ) do 
 	 player = player:lower():trim():gsub("^.", string.upper)
-	 if strlen(player) then
+	 if strlen(player) > 0 then
 	    newValues[#newValues + 1] = player
 	 end
       end
@@ -185,7 +190,7 @@ function mod:OptReg(optname, tbl, dispname, cmd)
 end
 
 function mod:RegisterModuleOptions(module, options)
-   return mod:OptReg(": "..module, options, module)
+   return mod:OptReg(": "..module, options, options.name)
 end
 
 function mod:SetupOptions()
@@ -205,6 +210,11 @@ function mod:SetupOptions()
 	      }, nil,  { "mloot", "magiclooter" })
 end
 
+function mod:OpenConfigMenu()
+--   LibStub("LibDropdown-1.0"):OpenAce3Menu(options)
+end
+
 function mod:ToggleConfigDialog()
+   InterfaceOptionsFrame_OpenToCategory(mod.profileFrame)
    InterfaceOptionsFrame_OpenToCategory(mod.configFrame)
 end

@@ -46,6 +46,7 @@ local defaultOptions = {
       autoLootThreshold = 3,
       disenchantThreshold = 3,
       disenchanterList = {},
+      autoloot = true,
       bankerList = {},
       minimapIcon = { hide = false },
       modules = {}
@@ -78,6 +79,8 @@ function mod:OnInitialize()
 			      OnClick = function(clickedframe, button)
 					   if button == "LeftButton" then
 					      mod:ToggleConfigDialog()
+					   else
+					      mod:OpenConfigMenu()
 					   end
 					end,
 			   })
@@ -136,29 +139,30 @@ function mod:CheckLoot()
       end
    end
    tsort(mod.sortedLootCandidates)
-   
-   for slot = 1, GetNumLootItems() do
-      local link =  GetLootSlotLink(slot)
-      if link then
-	 local _, _, _, quality = GetLootSlotInfo(slot)
-	 local bind = mod:GetBindOn(link)
-	 if bind ~= "pickup"  and quality <= db.autoLootThreshold and quality >= GetLootThreshold() then
-	    local recipient
-	    if mod:IsDisenchantable(link) then
-	       recipient = mod:GetDisenchantLootCandidateID()
-	       if db.announceLoot then
-		  mod:Print(string.format(L["Auto-looting %s to %s for disenchanting."], link, tostring(GetMasterLootCandidate(recipient))))
+   if db.autoloot then
+      for slot = 1, GetNumLootItems() do
+	 local link =  GetLootSlotLink(slot)
+	 if link then
+	    local _, _, _, quality = GetLootSlotInfo(slot)
+	    local bind = mod:GetBindOn(link)
+	    if bind ~= "pickup"  and quality <= db.autoLootThreshold and quality >= GetLootThreshold() then
+	       local recipient
+	       if mod:IsDisenchantable(link) then
+		  recipient = mod:GetDisenchantLootCandidateID()
+		  if db.announceLoot then
+		     mod:Print(string.format(L["Auto-looting %s to %s for disenchanting."], link, tostring(GetMasterLootCandidate(recipient))))
+		  end
+	       else
+		  recipient = mod:GetBankLootCandidateID()
+		  if recipient and  db.announceLoot then
+		     mod:Print(string.format(L["Auto-looting %s to %s for banking."], link, tostring(GetMasterLootCandidate(recipient))))
+		  end
 	       end
-	    else
-	       recipient = mod:GetBankLootCandidateID()
-	       if recipient and  db.announceLoot then
-		  mod:Print(string.format(L["Auto-looting %s to %s for banking."], link, tostring(GetMasterLootCandidate(recipient))))
+	       if not recipient then
+		  mod:Print(L["Warning: No recipient found?"])
+	       else
+		  GiveMasterLoot(slot, recipient)
 	       end
-	    end
-	    if not recipient then
-	       mod:Print(L["Warning: No recipient found?"])
-	    else
-	       GiveMasterLoot(slot, recipient)
 	    end
 	 end
       end
@@ -218,6 +222,9 @@ function mod:GetRandomLootCandidate()
    return looter, mod.masterLootCandidates[looter]
 end
 
+function mod:IterateMasterLootCandidates()
+   return pairs(mod.masterLootCandidates)
+end
 
 -- Return whether the item can be disenchanted or not
 function mod:IsDisenchantable(link)
@@ -259,4 +266,31 @@ function mod:tokenize(str, values)
       str = gsub(str, "%["..k.."%]", (type(v) == "function" and v() or v))
    end
    return str
+end
+
+do
+   local tableStore = {}
+   function mod.clear(tbl)
+      if type(tbl) == "table" then
+	 for id,data in pairs(tbl) do
+	    if type(data) == "table" then mod.del(data) end
+	    tbl[id] = nil
+	 end
+      end
+      return tbl
+   end   
+   
+   
+   function mod.get()
+      return tremove(tableStore) or {}
+   end
+   
+   function mod.del(tbl, index)
+      local todel = tbl
+      if index then todel = tbl[index] end
+      if type(todel) ~= "table" then return end
+      mod.clear(todel)
+      tinsert(tableStore, todel)
+      if index then tbl[index] = nil end
+   end
 end

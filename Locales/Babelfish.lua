@@ -18,6 +18,8 @@ local filePrefix = "../"
 local files = {
    "Config.lua",
    "MagicLooter.lua",
+   "Modules/LootMenu/LootMenu.lua",
+   "Modules/DKPBidder/DKPBidder.lua",
 }
 
 --[[

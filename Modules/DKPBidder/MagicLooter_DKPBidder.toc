@@ -1,0 +1,13 @@
+## Interface: 30000
+## Title: Magic Looter - DKP Bidder
+## Notes: Adds a DKP Bid handling entry to the Master Loot menu
+## Author: NeoTron
+## Version: 1.0
+## DefaultState: enabled
+## X-Category: Raid
+## X-eMail: neotron@gmail.com
+## RequiredDeps: MagicLooter_LootMenu
+## OptionalDeps: Ace3
+
+Libs\MagicComm\lib.xml
+DKPBidder.lua
