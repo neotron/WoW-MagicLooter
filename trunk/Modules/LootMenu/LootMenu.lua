@@ -23,6 +23,7 @@ along with MagicLooter.  If not, see <http://www.gnu.org/licenses/>.
 local MODULE_NAME = "LootMenu"
 local mod = MagicLooter
 local module = mod:NewModule(MODULE_NAME, "AceHook-3.0", "AceEvent-3.0")
+local LM = mod:GetModule("LootMenu")
 local L = LibStub("AceLocale-3.0"):GetLocale("MagicLooter", false)
 
 local tsort = table.sort
@@ -48,6 +49,9 @@ local defaultOptions = {
 local db = {}
 
 function module:OnInitialize()
+   module.rolls = {}
+   module.customMenuEntries = {}
+   
    -- the main drop down menu
    module.dropdown = CreateFrame("Frame", "ML_LootMenuDropdown", nil, "UIDropDownMenuTemplate") 
    UIDropDownMenu_Initialize(module.dropdown, module.Dropdown_OnLoad, "MENU");
@@ -62,13 +66,18 @@ function module:OnInitialize()
    -- register defaults and get db storage from the mothership
    db = mod:GetModuleDatabase(MODULE_NAME, defaultOptions, module.options)
    
-   module.rolls = {}
-
-   
 end
 
 function module:OnProfileChanged(newdb)
    db = newdb
+end
+
+function module:RegisterCustomEntry(addon, func)
+   module.customMenuEntries[addon] = func
+end
+
+function module:UnregisterCustomEntry(addon)
+   module.customMenuEntries[addon] = nil
 end
 
 function module:OnEnable()
@@ -143,11 +152,24 @@ function module:Dropdown_OnLoad(level)
 	 module:BuildRaidMenu(level, submenu)
       end
    end
+   module:AddCustomEntries(level, UIDROPDOWNMENU_MENU_VALUE)
 end
 
 
+function module:AddCustomEntries(level, submenu)
+   for addon,data in pairs(module.customMenuEntries) do
+      if type(data) == "string" then
+	 if type(addon[data]) == "function" then
+	    addon[data](addon, level, submenu)
+	 end
+      else
+	 data(addon, level, submenu)
+      end
+   end
+end
+
 function module:AddStaticButtons(hash, level)
-   if hash[level] then
+   if type(hash) == "table" and hash[level] then
       for _,button in ipairs(hash[level]) do
 	 UIDropDownMenu_AddButton(button, level)
       end
@@ -285,6 +307,8 @@ do
       end
       if not buildOnly then
 	 UIDropDownMenu_AddButton(info, level);
+      else
+	 return info
       end
    end
 
@@ -300,7 +324,11 @@ do
 end
 
 function module:AssignLoot(frame, recipient)
-   local mlc, isBank, isDE, isRandom
+   local mlc, isBank, isDE, isRandom, dkp
+   if type(recipient) == "table" then
+      dkp = recipient.bid
+      recipient = recipient.bidder
+   end
    if recipient == "_banker" then
       isBank = true
       mlc = mod:GetBankLootCandidateID()
@@ -326,12 +354,14 @@ function module:AssignLoot(frame, recipient)
    -- version of MagicDKP to handle external loot events. Only call if we have more than 5 players,
    -- which would indicate a raid.
    if _G.StaticPopupDialogs["MDKPDuplicate"] and #players > 5 then
-      MagicDKP:HandleLoot(recipient, tonumber(match(link, ".*|Hitem:(%d+):")), 1, false, true, isBank, isDE) -- call MagicDKP
+      MagicDKP:HandleLoot(recipient, tonumber(match(link, ".*|Hitem:(%d+):")), 1, false, true, isBank, isDE, dkp) -- call MagicDKP
    end
-   clear().player = recipient
-   info.item = link
-   info.postfix = (isDE and L[" for disenchanting"]) or (isBank and L[" for the guild bank"]) or (isRandom and L[" from a random roll"]) or  "" 
-   mod:Print(mod:tokenize(db.lootMessage, info))
+   if db.announceLoot then
+      clear().player = recipient
+      info.item = link
+      info.postfix = (isDE and L[" for disenchanting"]) or (isBank and L[" for the guild bank"]) or (isRandom and L[" from a random roll"]) or  ""
+      mod:Print(mod:tokenize(db.lootMessage, info))
+   end
    GiveMasterLoot(LootFrame.selectedSlot, mlc)
 end
 
@@ -408,7 +438,6 @@ function module:StartNewRoll()
    mod:SendChatMessage(mod:tokenize(db.rollMessage, info), "RW")
 end
 
-
 function mod:SendChatMessage(message, destination)
    if destination == "RW" then
       destination = (IsRaidLeader() or IsRaidOfficer()) and "RAID_WARNING" or "GROUP"
@@ -476,6 +505,14 @@ module.staticMenus = {
    }
 }
 
+function module:Header(level, text, icon)
+   clear().isTitle = true
+   info.notCheckable = true
+   info.text = text
+   info.icon = icon
+   UIDropDownMenu_AddButton(info, level)
+end
+
 
 -- config options
 module.options = {
@@ -520,7 +557,7 @@ module.options = {
       announceLoot = {
 	 type = "toggle",
 	 name = L["Announce Loot Recipients"],
-	 desc = L["Print a massage, only visible by you, when Magic Looter autoloots an item."],
+	 desc = L["Print a message, only visible by you, when Magic Looter autoloots an item."],
 	 order = 100, 
 	 width="full",
       },
