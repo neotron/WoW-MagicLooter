@@ -24,6 +24,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("MagicLooter", false)
 local AC = LibStub("AceConfig-3.0")
 local ACD = LibStub("AceConfigDialog-3.0")
 local DBOpt = LibStub("AceDBOptions-3.0")
+local R = LibStub("AceConfigRegistry-3.0")
 
 local LDBIcon = LibStub("LibDBIcon-1.0", true)
 local LDB = LibStub("LibDataBroker-1.1", true)
