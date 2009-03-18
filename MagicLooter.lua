@@ -282,7 +282,7 @@ do
    
    
    function mod.get()
-      return tremove(tableStore) or {}
+      return {} -- tremove(tableStore) or {}
    end
    
    function mod.del(tbl, index)
@@ -290,7 +290,7 @@ do
       if index then todel = tbl[index] end
       if type(todel) ~= "table" then return end
       mod.clear(todel)
-      tinsert(tableStore, todel)
+--      tinsert(tableStore, todel)
       if index then tbl[index] = nil end
    end
 end
