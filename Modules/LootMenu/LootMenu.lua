@@ -382,9 +382,11 @@ do
       if GetNumRaidMembers() > 0 then
 	 for id = 1,GetNumRaidMembers() do
 	    name, _, _, _, className, class = GetRaidRosterInfo(id)
-	    players[#players+1]  = name
-	    playerClass[name] = class
-	    classList[class] = className
+	    if name then 
+	       players[#players+1]  = name
+	       playerClass[name] = class
+	       if class and className then classList[class] = className end
+	    end
 	 end
       else
 	 for _,unit in ipairs(party_units) do
