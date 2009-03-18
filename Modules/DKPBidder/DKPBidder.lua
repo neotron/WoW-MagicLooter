@@ -102,12 +102,12 @@ function module:AddBidMenu(level, submenu)
 	    LM:AddSpacer(level)
 	    LM:Header(level, db.priorities[priority] or L["Whisper Bids"])
 
-	    tsort(bids, function(a, b) return a.bid > b.bid end)
+	    tsort(bids, function(a, b) return (a.bid or 0) > (b.bid or 0) end)
 	    
 	    for _,data in ipairs(bids) do
 	       if UnitExists(data.bidder) then
 		  local button = LM:PlayerEntry(data.bidder, level, true)
-		  button.text = fmt("% 4d: %s%s", data.bid, button.text, data.whisper and fmt(" (%s)", data.whisper) or "")
+		  button.text = fmt("% 4d: %s%s", tostring(data.bid), tostring(button.text), data.whisper and fmt(" (%s)", data.whisper) or "")
 		  button.arg2 = data
 		  UIDropDownMenu_AddButton(button, level);
 	       end
@@ -130,9 +130,10 @@ function module:SendUrgentMessage(channel, recipient)
    MagicComm:SendUrgentMessage(networkData, "MD", channel, recipient)
 end
 
-function module:StartNewBid()
-   local link = LootFrame.selectedSlot and GetLootSlotLink(LootFrame.selectedSlot)
+function module:StartNewBid(override)
+   local link = (LootFrame.selectedSlot and GetLootSlotLink(LootFrame.selectedSlot)) or override
    if not link then return end
+   module:BidCompleted(true)   
    if db.bidTimeout > 0 then
       module.bidTimeout = time() + db.bidTimeout
    else
@@ -158,12 +159,14 @@ function module:StartNewBid()
    end
 end
 
-function module:BidCompleted()
+function module:BidCompleted(quiet)
    for channel in pairs(bidChannels) do
       module:UnregisterEvent(channel)
    end
    new().item = module.currentBidItem
-   mod:SendChatMessage(mod:tokenize(db.bidClosedMessage, info), "GROUP")
+   if not quiet then 
+      mod:SendChatMessage(mod:tokenize(db.bidClosedMessage, info), "GROUP")
+   end
    module:CancelTimer(module.bidTimer, true)
    module.bidTimer = nil
    module.bidTimeout = time()
@@ -171,7 +174,10 @@ function module:BidCompleted()
 end
 
 function findpattern(text, pattern, start)
-   return string.sub(text, string.find(text, pattern, start))
+   local a, b = string.find(text, pattern, start)
+   if a and b then 
+      return string.sub(text, a, b)
+   end
 end
 
 function module:HandleBidMessage(channel, msg, sender)
@@ -208,21 +214,22 @@ end
 
 function module:SendBidRequest(item)
    SetNetworkData("DKPBID", item, db.priorities)
-   for recipient in mod:IterateMasterLootCandidates() do
-      module.remainingBidders[recipient] = true
-      module:SendUrgentMessage("WHISPER", recipient)
-   end
+   module:SendUrgentMessage("RAID")
 end
 
 function module:OnDKPResponse(bidder, bid, priority, item)
-   if item ~= module.currentBidItem or (module.bidTimeout or 0) < time() then
+   if  (module.bidTimeout or 0) < time() then --  item ~= module.currentBidItem or
       mod:Print("Ignoring late or invalid bid from",bidder,":", bid or "(passed)", "for item", item)
       return
    end
+   
+   module:ExtendBid()
    if bid == nil then
       -- Passed bid
       module.remainingBidders[bidder]  = nil
+--      mod:Print(bidder, "passed on item", item)
    else
+      mod:Print(bidder, "bid", bid, "on item", module.currentBidItem, "as", db.priorities[priority])
       local prio = module.bids[priority] or mod.get()
       module.remainingBidders[bidder]  = nil
       if not module.bidders[bidder] then 
@@ -233,7 +240,6 @@ function module:OnDKPResponse(bidder, bid, priority, item)
 	 module.bids[priority] = prio
 	 module.bidders[bidder] = data
       end
-      module:ExtendBid()
    end
    if db.autoClose and #module.remainingBidders == 0 then
       module:BidCompleted()

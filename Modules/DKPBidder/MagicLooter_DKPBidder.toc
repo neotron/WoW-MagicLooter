@@ -7,7 +7,7 @@
 ## X-Category: Raid
 ## X-eMail: neotron@gmail.com
 ## RequiredDeps: MagicLooter_LootMenu
-## OptionalDeps: Ace3
+## OptionalDeps: Ace3, MagicComm
 
 Libs\MagicComm\lib.xml
 DKPBidder.lua
