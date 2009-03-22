@@ -294,3 +294,13 @@ do
       if index then tbl[index] = nil end
    end
 end
+
+function mod:SendChatMessage(message, destination)
+   if destination == "RW" then
+      destination = (IsRaidLeader() or IsRaidOfficer()) and "RAID_WARNING" or "GROUP"
+   end
+   if destination == "GROUP" then
+      destination = GetNumRaidMembers() > 0 and "RAID" or "PARTY"
+   end
+   SendChatMessage(message, destination)
+end

@@ -2,7 +2,7 @@
 ## Title: Magic Looter
 ## Notes: A loot distribution addon meant to improve master looting during raids.
 ## Author: NeoTron
-## Version: 1.0
+## Version: 1.0.@project-revision@
 ## DefaultState: enabled
 ## X-Category: Raid
 ## X-eMail: neotron@gmail.com
