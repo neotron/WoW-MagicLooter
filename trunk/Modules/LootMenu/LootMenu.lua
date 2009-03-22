@@ -41,8 +41,10 @@ local classOrder = {  "DEATHKNIGHT", "DRUID", "HUNTER", "MAGE", "PALADIN", "PRIE
 local defaultOptions = {
    rollTimeout = 20,
    rollLimit = 100,
+   bidEnabled = true,
    randomEnabled = true,
    rollMessage = L["Attention! /roll [limit] for [item]. Ends in [timeout] seconds."],
+   bidMessage = L["Attention! Taking bids for [item]."],
    lootMessage = L["[player] awarded [item][postfix]."],
 }
 
@@ -142,6 +144,10 @@ function module:Dropdown_OnLoad(level)
 
       module:BuildQuickLoot(level)
       module:BuildRandomLoot(level)
+      if db.bidEnabled then 
+	 module:AddStaticButtons(module.staticMenus.dkp, level)
+      end
+
    elseif level == 2 then
       local submenu = UIDROPDOWNMENU_MENU_VALUE
       if submenu == "QUICKLOOT" then
@@ -427,6 +433,19 @@ function module:EndRoll()
    module.rollTimeout = nil
 end
 
+function module:StartNewBid()
+   local link = LootFrame.selectedSlot and GetLootSlotLink(LootFrame.selectedSlot)
+   if not link then return end
+   clear().item = link
+
+   if MagicDKP and MagicDKP.modules.Bidder then
+      MagicDKP.modules.Bidder:StartNewBid(link)
+      
+   else
+      mod:SendChatMessage(mod:tokenize(db.bidMessage, info), "RW")
+   end
+end
+
 function module:StartNewRoll()
    local link = LootFrame.selectedSlot and GetLootSlotLink(LootFrame.selectedSlot)
    if not link then return end
@@ -438,16 +457,6 @@ function module:StartNewRoll()
    info.timeout = db.rollTimeout
    
    mod:SendChatMessage(mod:tokenize(db.rollMessage, info), "RW")
-end
-
-function mod:SendChatMessage(message, destination)
-   if destination == "RW" then
-      destination = (IsRaidLeader() or IsRaidOfficer()) and "RAID_WARNING" or "GROUP"
-   end
-   if destination == "GROUP" then
-      destination = GetNumRaidMembers() > 0 and "RAID" or "PARTY"
-   end
-   SendChatMessage(message, destination)
 end
 
 function module:SetProfileParam(var, value)
@@ -470,6 +479,17 @@ end
 
 
 module.staticMenus = {
+   dkp = {
+      {
+	 { 
+	    text = L["Start DKP Bid"],
+	    notCheckable = true,
+	    icon = "Interface\\Buttons\\UI-GuildButton-MOTD-Up",
+	    func = module.StartNewBid,
+	    arg1 = module,
+	 }
+      },
+   },
    random = {
       {
 	 { 
@@ -528,6 +548,12 @@ module.options = {
 	 type = "toggle",
 	 name = L["Enable Random Menu"],
 	 desc = L["Show the randon loot distribution menu. "],
+	 order = 10,
+      }, 
+      bidEnabled = {
+	 type = "toggle",
+	 name = L["Enable DKP Bid Menu"],
+	 desc = L["Show the DKP Bidding menu. This will use the MagicDKP Bidder if available. Otherwise it simply sends a raid warning indicating that a bid is starting. "],
 	 order = 10,
       }, 
       rollTimeout = {
