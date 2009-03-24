@@ -39,6 +39,9 @@ local info = {}
 local classOrder = {  "DEATHKNIGHT", "DRUID", "HUNTER", "MAGE", "PALADIN", "PRIEST", "ROGUE", "SHAMAN", "WARLOCK", "WARRIOR" } 
 
 local defaultOptions = {
+   lootConfirmThreshold  = 3,
+   confirmBankLoot = true,
+   confirmDisenchantLoot = true,
    rollTimeout = 20,
    rollLimit = 100,
    bidEnabled = true,
@@ -67,7 +70,16 @@ function module:OnInitialize()
    
    -- register defaults and get db storage from the mothership
    db = mod:GetModuleDatabase(MODULE_NAME, defaultOptions, module.options)
-   
+
+   StaticPopupDialogs["MagicLooterConfirmLoot"] = {
+      text = CONFIRM_LOOT_DISTRIBUTION,
+      button1 = YES,
+      button2 = NO,
+      OnAccept = function(self,data) module:ReallyAssignLoot(data) end,
+      timeout = 0,
+      hideOnEscape = 1,
+   }
+
 end
 
 function module:OnProfileChanged(newdb)
@@ -351,24 +363,49 @@ function module:AssignLoot(frame, recipient)
 	 mlc = mod:GetLootCandidateID(recipient)
       end
    end
+
    if not mlc or not LootFrame.selectedSlot then return end
-   local icon, name, quantity, quality = GetLootSlotInfo(LootFrame.selectedSlot)
    local link = GetLootSlotLink(LootFrame.selectedSlot)
    if not link then return end
-   
+
+   local data = {
+      item = link,
+      recipient = recipient,
+      isDE = isDE,
+      isBank = isBank,
+      isRandom = isRandom,
+      dkp = dkp,
+      slot = LootFrame.selectedSlot,
+      mlc = mlc
+   }
+
+   if select(3, GetItemInfo(link)) >= db.lootConfirmThreshold
+      and (not (isDE or isBank) -- normal loot
+	   or  (isDE and db.confirmDisenchantLoot) -- disenchant with disenchant confirmation on
+	      or (isBank and db.confirmBankLoot)  -- bank with bank confirmation on
+	      or (isRandom and db.confirmRandomLoot)  -- bank with bank confirmation on
+	) then
+      local dialog = StaticPopup_Show("MagicLooterConfirmLoot", link, recipient)
+      if dialog then dialog.data = data end      
+      return
+   end
+   module:ReallyAssignLoot(data)
+end
+
+function module:ReallyAssignLoot(data)      
    -- Hook into MagicDKP if present. Check for this static dialog since it indicates a new enough
    -- version of MagicDKP to handle external loot events. Only call if we have more than 5 players,
    -- which would indicate a raid.
    if _G.StaticPopupDialogs["MDKPDuplicate"] and #players > 5 then
-      MagicDKP:HandleLoot(recipient, tonumber(match(link, ".*|Hitem:(%d+):")), 1, false, true, isBank, isDE, dkp) -- call MagicDKP
+      MagicDKP:HandleLoot(recipient, tonumber(match(data.link, ".*|Hitem:(%d+):")), 1, false, true, data.isBank, data.isDE, data.dkp) -- call MagicDKP
    end
    if db.announceLoot then
-      clear().player = recipient
-      info.item = link
-      info.postfix = (isDE and L[" for disenchanting"]) or (isBank and L[" for the guild bank"]) or (isRandom and L[" from a random roll"]) or  ""
+      clear().player = data.recipient
+      info.item = data.link
+      info.postfix = (data.isDE and L[" for disenchanting"]) or (data.isBank and L[" for the guild bank"]) or (data.isRandom and L[" from a random roll"]) or  ""
       mod:Print(mod:tokenize(db.lootMessage, info))
    end
-   GiveMasterLoot(LootFrame.selectedSlot, mlc)
+   GiveMasterLoot(data.slot, data.mlc)
 end
 
 
@@ -542,60 +579,103 @@ module.options = {
    name = L["Loot Menu"],
    handler = module,
    set = "SetProfileParam",
-   get = "GetProfileParam", 
+   get = "GetProfileParam",
+   childGroups  = "tab",
    args = {
-      randomEnabled = {
-	 type = "toggle",
-	 name = L["Enable Random Menu"],
-	 desc = L["Show the randon loot distribution menu. "],
-	 order = 10,
-      }, 
-      bidEnabled = {
-	 type = "toggle",
-	 name = L["Enable DKP Bid Menu"],
-	 desc = L["Show the DKP Bidding menu. This will use the MagicDKP Bidder if available. Otherwise it simply sends a raid warning indicating that a bid is starting. "],
-	 order = 10,
-      }, 
-      rollTimeout = {
-	 type = "range",
-	 name = L["Random Roll Timeout"],
-	 desc = L["Time in seconds before the random roll expires."],
-	 min = 5, max = 120, step = 1,
-	 order = 20,
-	 width="full",
-	 disabled = "RandomDisabled",
+      options = {
+	 type = "group",
+	 name = L["Options"],
+	 args = {
+	    randomEnabled = {
+	       type = "toggle",
+	       name = L["Enable Random Menu"],
+	       desc = L["Show the randon loot distribution menu. "],
+	       order = 10,
+	    }, 
+	    bidEnabled = {
+	       type = "toggle",
+	       name = L["Enable DKP Bid Menu"],
+	       desc = L["Show the DKP Bidding menu. This will use the MagicDKP Bidder if available. Otherwise it simply sends a raid warning indicating that a bid is starting. "],
+	       order = 10,
+	    }, 
+	    rollTimeout = {
+	       type = "range",
+	       name = L["Random Roll Timeout"],
+	       desc = L["Time in seconds before the random roll expires."],
+	       min = 5, max = 120, step = 1,
+	       order = 20,
+	       width="full",
+	       disabled = "RandomDisabled",
+	    },
+	    rollLimit = {
+	       type = "range", 
+	       name = L["Random Roll Limit"],
+	       desc = L["The upper limit for random rolls. The default is 100."],
+	       min = 5, max = 10000, step = 1,
+	       width="full",
+	       order = 30,
+	       disabled = "RandomDisabled",
+	    },
+	    rollMessage = {
+	       type = "input",
+	       width="full",
+	       name = L["Random Roll Message"],
+	       desc = L["The message sent to the raid or party when a new roll begins. The following tokens are available: [limit] (upper limit of roll), [item] (the item link) and [timeout] (the roll timeout)."],
+	       order = 40,
+	       disabled = "RandomDisabled",
+	    },
+	    announceLoot = {
+	       type = "toggle",
+	       name = L["Announce Loot Recipients"],
+	       desc = L["Print a message, only visible by you, when Magic Looter autoloots an item."],
+	       order = 100, 
+	       width="full",
+	    },
+	    lootMessage = {
+	       type = "input",
+	       name = L["Loot Announce Message"],
+	       desc = L["The message sent when an item is looted. The following tokens are available: [player] (receiving player), [item] (the item link) and [postfix (optional postfix for disenchanted, banked or randomly distributed loot)."],
+	       order = 110,
+	       width="full",
+	       disabled = "AnnounceDisabled",
+	    },
+	 },
       },
-      rollLimit = {
-	 type = "range", 
-	 name = L["Random Roll Limit"],
-	 desc = L["The upper limit for random rolls. The default is 100."],
-	 min = 5, max = 10000, step = 1,
-	 width="full",
-	 order = 30,
-	 disabled = "RandomDisabled",
-      },
-      rollMessage = {
-	 type = "input",
-	 width="full",
-	 name = L["Random Roll Message"],
-	 desc = L["The message sent to the raid or party when a new roll begins. The following tokens are available: [limit] (upper limit of roll), [item] (the item link) and [timeout] (the roll timeout)."],
-	 order = 40,
-	 disabled = "RandomDisabled",
-      },
-      announceLoot = {
-	 type = "toggle",
-	 name = L["Announce Loot Recipients"],
-	 desc = L["Print a message, only visible by you, when Magic Looter autoloots an item."],
-	 order = 100, 
-	 width="full",
-      },
-      lootMessage = {
-	 type = "input",
-	 name = L["Loot Announce Message"],
-	 desc = L["The message sent when an item is looted. The following tokens are available: [player] (receiving player), [item] (the item link) and [postfix (optional postfix for disenchanted, banked or randomly distributed loot)."],
-	 order = 110,
-	 width="full",
-	 disabled = "AnnounceDisabled",
-      },
+      confirmation = {
+	 type = "group",
+	 name = L["Loot Confirmation"],
+	 args = {
+	    lootConfirmThreshold = {
+	       type = "select",
+	       name = L["Loot Confirmation Threshold"],
+	       desc = L["When giving loot of this threshold or higher, ask for confirmation."],
+	       values = mod.lootThresholds, 
+	    }, 
+	    confirmBankLoot = {
+	       type = "toggle",
+	       width = "full", 
+	       name = L["Confirm Bank Loot"],
+	       desc = L["Ask for confirmation when sending loot to the bank."],
+	    }, 
+	    confirmRandomLoot = {
+	       type = "toggle",
+	       width = "full", 
+	       name = L["Confirm Random Loot"],
+	       desc = L["Ask for confirmation when sending loot to a random recipient."],
+	    }, 
+	    confirmDisenchantLoot = {
+	       type = "toggle",
+	       width = "full", 
+	       name = L["Confirm Disenchant Loot"],
+	       desc = L["Ask for confirmation when sending loot to be disenchanted."],
+	       order = 1
+	    },
+	    spacer = {
+	       type = "description",
+	       name = "",
+	       order = 2
+	    }
+	 }
+      },     
    }
 }
