@@ -41,10 +41,11 @@ function mod:NotifyChange()
 end
 
 
-local lootThresholds = {
-   L["Uncommon"],
-   L["Rare"],
-   L["Epic"], 
+mod.lootThresholds = {
+   [2] = ITEM_QUALITY2_DESC, 
+   [3] = ITEM_QUALITY3_DESC, 
+   [4] = ITEM_QUALITY4_DESC, 
+   [5] = ITEM_QUALITY5_DESC
 }
 
 -- config options
@@ -59,14 +60,14 @@ options = {
 	 type = "select",
 	 name = L["Auto Loot Threshold"],
 	 desc = L["Only auto loot items below and including the selected rarity."],
-	 values = lootThresholds, 
+	 values = mod.lootThresholds, 
 	 order = 1, 
       }, 
       disenchantThreshold = {
 	 type = "select",
 	 name = L["Disenchant Threshold"],
 	 desc = L["Only consider items at or below this threshold as disenchantable. Items not considered disenchantable will be auto looted using the banker list instead of the disenchanter list."],
-	 values = lootThresholds, 
+	 values = mod.lootThresholds, 
 	 order = 1, 
       },
       spacer1 = {
@@ -97,6 +98,7 @@ options = {
       },
       minimapIcon = {
 	 type = "toggle",
+	 width ="full",
 	 name = L["Enable Minimap Icon"],
 	 desc = L["Show an icon to open the Magic Looter config at the minimap."],
 	 get = function() return not db.minimapIcon.hide end,
@@ -107,9 +109,11 @@ options = {
 	 type = "toggle",
 	 name = L["Announce Loot Recipients"],
 	 desc = L["Print a massage, only visible by you, when Magic Looter autoloots an item."],
+	 width ="full",
       },
       autoloot = {
 	 type = "toggle",
+	 width ="full",
 	 name = L["Enable Auto Loot"],
 	 desc = L["Automatically loot items for disenchanting and banking if they fall within the specified thresholds. If disabled, you can still use the smart looting using the MagicLooter Loot Menu addon."],
       },
@@ -118,9 +122,7 @@ options = {
 
 function mod:SetProfileParam(var, value)
    local varName = var[#var]
-   if varName == "autoLootThreshold" or varName == "disenchantThreshold" then
-      value = value + 1
-   elseif varName == "disenchanterList" or varName == "bankerList" then
+   if varName == "disenchanterList" or varName == "bankerList" then
       local newValues = {}
       for _,player in ipairs(  { strsplit("\n", value) } ) do 
 	 player = player:lower():trim():gsub("^.", string.upper)
@@ -136,42 +138,11 @@ end
 
 function mod:GetProfileParam(var) 
    local varName = var[#var]
-   if varName == "autoLootThreshold" or varName == "disenchantThreshold" then
-      return db[varName] - 1
-   elseif varName == "disenchanterList" or varName == "bankerList" then
+   if varName == "disenchanterList" or varName == "bankerList" then
       return strjoin("\n", unpack(db[varName]))
    end
    return db[varName]
 end
-
-function mod:SetProfileParam(var, value)
-   local varName = var[#var]
-   if varName == "autoLootThreshold" or varName == "disenchantThreshold" then
-      value = value + 1
-   elseif varName == "disenchanterList" or varName == "bankerList" then
-      local newValues = {}
-      for _,player in ipairs(  { strsplit("\n", value) } ) do 
-	 player = player:lower():trim():gsub("^.", string.upper)
-	 if strlen(player) > 0 then
-	    newValues[#newValues + 1] = player
-	 end
-      end
-      value = newValues
-   end
-      
-   db[varName] = value
-end
-
-function mod:GetProfileParam(var) 
-   local varName = var[#var]
-   if varName == "autoLootThreshold" or varName == "disenchantThreshold" then
-      return db[varName] - 1
-   elseif varName == "disenchanterList" or varName == "bankerList" then
-      return strjoin("\n", unpack(db[varName]))
-   end
-   return db[varName]
-end
-
 
 function mod:OptReg(optname, tbl, dispname, cmd)
    local regtable
