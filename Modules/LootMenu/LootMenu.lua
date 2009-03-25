@@ -397,7 +397,7 @@ function module:ReallyAssignLoot(data)
    -- version of MagicDKP to handle external loot events. Only call if we have more than 5 players,
    -- which would indicate a raid.
    if _G.StaticPopupDialogs["MDKPDuplicate"] and #players > 5 then
-      MagicDKP:HandleLoot(recipient, tonumber(match(data.link, ".*|Hitem:(%d+):")), 1, false, true, data.isBank, data.isDE, data.dkp) -- call MagicDKP
+      MagicDKP:HandleLoot(data.recipient, tonumber(match(data.item, ".*|Hitem:(%d+):")), 1, false, true, data.isBank, data.isDE, data.dkp) -- call MagicDKP
    end
    if db.announceLoot then
       clear().player = data.recipient
