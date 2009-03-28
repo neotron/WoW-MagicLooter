@@ -22,7 +22,7 @@ along with MagicLooter.  If not, see <http://www.gnu.org/licenses/>.
 
 local MODULE_NAME = "LootMenu"
 local mod = MagicLooter
-local module = mod:NewModule(MODULE_NAME, "AceHook-3.0", "AceEvent-3.0")
+local module = mod:NewModule(MODULE_NAME, "AceHook-3.0", "AceEvent-3.0", "AceTimer-3.0")
 local LM = mod:GetModule("LootMenu")
 local L = LibStub("AceLocale-3.0"):GetLocale("MagicLooter", false)
 
@@ -99,7 +99,7 @@ function module:OnEnable()
    module:SecureHook("LootFrame_OnEvent","OnEvent")
    module:RegisterEvent("RAID_ROSTER_UPDATE", "UpdatePlayers")
    module:RegisterEvent("PARTY_MEMBERS_CHANGED", "UpdatePlayers")
-   module:UpdatePlayers()
+   module:ReallyUpdatePlayers()
 end
 
 
@@ -416,16 +416,24 @@ end
 
 do
    local party_units = { "player", "party1", "party2", "party3", "party4" }
+   local _timer
    function module:UpdatePlayers()
-      for id in ipairs(players) do players[id] = nil end
-      for id in ipairs(playerClass) do playerClass[id] = nil end
-      for id in ipairs(classList) do classList[id] = nil end
-      
+      module:CancelTimer(_timer, true)
+      _timer = module:ScheduleTimer("ReallyUpdatePlayers", 10)
+   end
+   
+   function module:ReallyUpdatePlayers()
+      for id in pairs(players) do players[id] = nil end
+      for id in pairs(playerClass) do playerClass[id] = nil end
+      for id in pairs(classList) do classList[id] = nil end
       local id, name, class, className
       if GetNumRaidMembers() > 0 then
 	 for id = 1,GetNumRaidMembers() do
-	    name, _, _, _, className, class = GetRaidRosterInfo(id)
-	    if name then 
+	    name, _, _, _, className, class, status = GetRaidRosterInfo(id)
+	    if not class then
+	       className, class = UnitClass(name)
+	    end
+	    if name and status ~= PLAYER_OFFLINE then 
 	       players[#players+1]  = name
 	       playerClass[name] = class
 	       if class and className then classList[class] = className end
@@ -445,8 +453,8 @@ do
       tsort(players)
    end
 end
-local rollPattern = gsub(gsub(gsub(RANDOM_ROLL_RESULT, "[()]", "."), "%%s", "([^ ]+)") , "%%d", "(%%d+)")
 
+local rollPattern = gsub(gsub(gsub(RANDOM_ROLL_RESULT, "[()]", "."), "%%s", "([^ ]+)") , "%%d", "(%%d+)")
 function module:ParseRollChat(event, message)
    if not module.rollTimeout or module.rollTimeout < time() then
       -- not rolling or too late
