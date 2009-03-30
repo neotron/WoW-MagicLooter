@@ -117,7 +117,7 @@ function module:OnEvent(this,event,...)
    end
 end
 
-function clear() for id in pairs(info) do info[id] = nil end return info end
+local function clear() for id in pairs(info) do info[id] = nil end return info end
 
 function module:AddSpacer(level)
    clear().disabled = true
@@ -126,10 +126,9 @@ end
 
 function module:InsertLootItem(info)
    if not LootFrame.selectedSlot then return end
-   local icon, name, quantity, quality = GetLootSlotInfo(LootFrame.selectedSlot)
---   local tip = self.db.profile.mlitemtip
    local link = GetLootSlotLink(LootFrame.selectedSlot)
    if not link then return nil end
+   local icon, name, quantity, quality = GetLootSlotInfo(LootFrame.selectedSlot)
    if quantity > 1 then
       info.text = fmt("%s%s|rx%d", ITEM_QUALITY_COLORS[quality].hex, name, quantity)
    else
