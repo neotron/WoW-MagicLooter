@@ -56,6 +56,7 @@ local db = {}
 function module:OnInitialize()
    module.rolls = {}
    module.customMenuEntries = {}
+   module.pendingLootSlots = {}
    
    -- the main drop down menu
    module.dropdown = CreateFrame("Frame", "ML_LootMenuDropdown", nil, "UIDropDownMenuTemplate") 
@@ -99,22 +100,55 @@ function module:OnEnable()
    module:SecureHook("LootFrame_OnEvent","OnEvent")
    module:RegisterEvent("RAID_ROSTER_UPDATE", "UpdatePlayers")
    module:RegisterEvent("PARTY_MEMBERS_CHANGED", "UpdatePlayers")
+   module:RegisterEvent("LOOT_SLOT_CLEARED", "LootSlotCleared")
+   module:RegisterEvent("LOOT_CLOSED", "LootClosed")
    module:ReallyUpdatePlayers()
 end
 
 
 function module:OnDisable()
+   module:UnregisterEvent("RAID_ROSTER_UPDATE")
+   module:UnregisterEvent("PARTY_MEMBERS_CHANGED")
+   module:UnregisterEvent("LOOT_SLOT_CLEARED")
+   module:UnregisterEvent("LOOT_CLOSED")
 end
 
-function module:OnEvent(this,event,...)
+function module:RegisterLootedItem(slotId)
+   local data = module.pendingLootSlots[slotId]
+   if not data then return end
+   module.pendingLootSlots[slotId] = nil
+   
+   -- Hook into MagicDKP if present. Check for this static dialog since it indicates a new enough
+   -- version of MagicDKP to handle external loot events. Only call if we have more than 5 players,
+   -- which would indicate a raid.
+   if MagicDKP and MagicDKP.MINOR_VERSION >= 105 and (not MagicDKP.HasActiveRaid or MagicDKP:HasActiveRaid()) then
+      MagicDKP:HandleLoot(data.recipient, tonumber(match(data.item, ".*|Hitem:(%d+):")), 1, false, true, data.isBank, data.isDE, data.dkp) -- call MagicDKP
+   end
+   if db.announceLoot then
+      clear().player = data.recipient
+      info.item = data.link
+      info.postfix = (data.isDE and L[" for disenchanting"]) or (data.isBank and L[" for the guild bank"]) or (data.isRandom and L[" from a random roll"]) or  ""
+   end
+end
+
+function module:OnEvent(this, event, slotId)
    local method, id = GetLootMethod()
    if event == "OPEN_MASTER_LOOT_LIST" then
       return module:ShowMenu()
-   elseif event == "LOOT_CLOSED" then
-      CloseDropDownMenus() 
    elseif event == "UPDATE_MASTER_LOOT_LIST" then
---      return module.dewdrop:Refresh(1)
+      --
    end
+end
+
+function module:LootSlotCleared(event, slotId)
+   module:RegisterLootedItem(slotId)
+end
+
+function module:LootClosed(event)
+   for id, data in pairs(module.pendingLootSlots) do
+      module:RegisterLootedItem(id)
+   end
+   CloseDropDownMenus()
 end
 
 local function clear() for id in pairs(info) do info[id] = nil end return info end
@@ -392,18 +426,7 @@ function module:AssignLoot(frame, recipient)
 end
 
 function module:ReallyAssignLoot(data)      
-   -- Hook into MagicDKP if present. Check for this static dialog since it indicates a new enough
-   -- version of MagicDKP to handle external loot events. Only call if we have more than 5 players,
-   -- which would indicate a raid.
-   if _G.StaticPopupDialogs["MDKPDuplicate"] and #players > 5 then
-      MagicDKP:HandleLoot(data.recipient, tonumber(match(data.item, ".*|Hitem:(%d+):")), 1, false, true, data.isBank, data.isDE, data.dkp) -- call MagicDKP
-   end
-   if db.announceLoot then
-      clear().player = data.recipient
-      info.item = data.link
-      info.postfix = (data.isDE and L[" for disenchanting"]) or (data.isBank and L[" for the guild bank"]) or (data.isRandom and L[" from a random roll"]) or  ""
-      mod:Print(mod:tokenize(db.lootMessage, info))
-   end
+   module.pendingLootSlots[data.slot] = data
    GiveMasterLoot(data.slot, data.mlc)
 end
 
@@ -484,7 +507,6 @@ function module:StartNewBid()
 
    if MagicDKP and MagicDKP.modules.Bidder then
       MagicDKP.modules.Bidder:StartNewBid(link)
-      
    else
       mod:SendChatMessage(mod:tokenize(db.bidMessage, info), "RW")
    end
