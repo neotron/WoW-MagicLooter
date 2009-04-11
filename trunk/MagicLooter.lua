@@ -40,6 +40,8 @@ local UnitGUID = UnitGUID
 local tsort = table.sort
 local gsub = string.gsub
 
+local db
+
 local defaultOptions = {
    profile = {
       announceLoot = true,
@@ -63,10 +65,10 @@ function mod:OnInitialize()
    self.db = LibStub("AceDB-3.0"):New("MagicLooterDB", defaultOptions, "Default")
    self.db.RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
    self.db.RegisterCallback(self, "OnProfileCopied", "OnProfileChanged")
-   self.db.RegisterCallback(self, "OnProfileDeleted","OnProfileChanged")
    self.db.RegisterCallback(self, "OnProfileReset", "OnProfileChanged")
 
    UpdateUpvalues()
+   mod:NotifyChange()
    
    if LDB then
       self.ldb =
