@@ -29,7 +29,7 @@ local R = LibStub("AceConfigRegistry-3.0")
 local LDBIcon = LibStub("LibDBIcon-1.0", true)
 local LDB = LibStub("LibDataBroker-1.1", true)
 
-local options
+local options, db
 
 local function UpdateUpvalues()
    db = mod.db.profile         -- profile data
