@@ -249,13 +249,13 @@ function mod:GetBindOn(item)
    tt:SetOwner(UIParent, "ANCHOR_NONE")
    tt:SetHyperlink(item)
    if MagicLooterTooltip:NumLines() > 1  and MagicLooterTooltipTextLeft2:GetText() then
-      local t = MagicLooterTooltipTextLeft2:GetText()
+      local t, t2 = MagicLooterTooltipTextLeft2:GetText(), MagicLooterTooltipTextLeft3:GetText()
       tt:Hide()
-      if t == ITEM_BIND_ON_PICKUP then
+      if t == ITEM_BIND_ON_PICKUP or t2 == ITEM_BIND_ON_PICKUP then
 	 return "pickup"
-      elseif t == ITEM_BIND_ON_EQUIP then
+      elseif t == ITEM_BIND_ON_EQUIP or t2 == ITEM_BIND_ON_EQUIP then
 	 return "equip"
-      elseif t == ITEM_BIND_ON_USE then
+      elseif t == ITEM_BIND_ON_USE or t2 == ITEM_BIND_ON_USE then
 	 return "use"
       end
    end
