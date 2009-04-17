@@ -51,6 +51,7 @@ local defaultOptions = {
    lootMessage = L["[player] awarded [item][postfix]."],
 }
 
+local function clear() for id in pairs(info) do info[id] = nil end return info end
 local db = {}
 
 function module:OnInitialize()
@@ -98,6 +99,7 @@ end
 function module:OnEnable()
    -- Hook into the loot frame event handler
    module:SecureHook("LootFrame_OnEvent","OnEvent")
+   module:RegisterEvent("OPEN_MASTER_LOOT_LIST", "ShowMenu")
    module:RegisterEvent("RAID_ROSTER_UPDATE", "UpdatePlayers")
    module:RegisterEvent("PARTY_MEMBERS_CHANGED", "UpdatePlayers")
    module:RegisterEvent("LOOT_SLOT_CLEARED", "LootSlotCleared")
@@ -131,7 +133,7 @@ function module:RegisterLootedItem(slotId)
    end
 end
 
-function module:OnEvent(this, event, slotId)
+function module:OnEvent(this, event, slotId, ...)
    local method, id = GetLootMethod()
    if event == "OPEN_MASTER_LOOT_LIST" then
       return module:ShowMenu()
@@ -150,8 +152,6 @@ function module:LootClosed(event)
    end
    CloseDropDownMenus()
 end
-
-local function clear() for id in pairs(info) do info[id] = nil end return info end
 
 function module:AddSpacer(level)
    clear().disabled = true
