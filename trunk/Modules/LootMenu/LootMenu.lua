@@ -458,7 +458,12 @@ do
 	    if name and status ~= PLAYER_OFFLINE then 
 	       players[#players+1]  = name
 	       playerClass[name] = class
-	       if class and className then classList[class] = className end
+	       if not class or not className then
+		  -- not available yet, try again later
+		  module:UpdatePlayers()
+		  return
+	       end
+	       classList[class] = className 
 	    end
 	 end
       else
@@ -466,9 +471,14 @@ do
 	    if UnitExists(unit) then
 	       name = UnitName(unit)
 	       className, class = UnitClass(unit)
+	       if not class or not className then
+		  -- not available yet, try again later
+		  module:UpdatePlayers()
+		  return
+	       end
 	       players[#players + 1] = name
 	       playerClass[name] = class
-	       classList[class] = className
+	       classList[class] = className 
 	    end
 	 end
       end
