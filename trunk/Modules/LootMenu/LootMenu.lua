@@ -452,10 +452,15 @@ do
       if GetNumRaidMembers() > 0 then
 	 for id = 1,GetNumRaidMembers() do
 	    name, _, _, _, className, class, status = GetRaidRosterInfo(id)
-	    if not class then
-	       className, class = UnitClass(name)
-	    end
 	    if name and status ~= PLAYER_OFFLINE then 
+	       if not class then
+		  className, class = UnitClass(name)
+		  -- not available yet, try again later
+		  module:UpdatePlayers()
+		  return
+	       end
+	       if not class or not className or not name then
+	       end
 	       players[#players+1]  = name
 	       playerClass[name] = class
 	       if not class or not className then
@@ -471,7 +476,7 @@ do
 	    if UnitExists(unit) then
 	       name = UnitName(unit)
 	       className, class = UnitClass(unit)
-	       if not class or not className then
+	       if not class or not className or not name then
 		  -- not available yet, try again later
 		  module:UpdatePlayers()
 		  return
