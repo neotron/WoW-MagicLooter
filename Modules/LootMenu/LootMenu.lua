@@ -116,20 +116,22 @@ function module:OnDisable()
 end
 
 function module:RegisterLootedItem(slotId)
-   local data = module.pendingLootSlots[slotId]
-   if not data then return end
-   module.pendingLootSlots[slotId] = nil
-   
-   -- Hook into MagicDKP if present. Check for this static dialog since it indicates a new enough
-   -- version of MagicDKP to handle external loot events. Only call if we have more than 5 players,
-   -- which would indicate a raid.
-   if MagicDKP and MagicDKP.MINOR_VERSION >= 105 and (not MagicDKP.HasActiveRaid or MagicDKP:HasActiveRaid()) then
-      MagicDKP:HandleLoot(data.recipient, tonumber(match(data.item, ".*|Hitem:(%d+):")), 1, false, true, data.isBank, data.isDE, data.dkp) -- call MagicDKP
-   end
-   if db.announceLoot then
-      clear().player = data.recipient
-      info.item = data.link
-      info.postfix = (data.isDE and L[" for disenchanting"]) or (data.isBank and L[" for the guild bank"]) or (data.isRandom and L[" from a random roll"]) or  ""
+   if #players > 0 then
+      local data = module.pendingLootSlots[slotId]
+      if not data then return end
+      module.pendingLootSlots[slotId] = nil
+      
+      -- Hook into MagicDKP if present. Check for this static dialog since it indicates a new enough
+      -- version of MagicDKP to handle external loot events. Only call if we have more than 5 players,
+      -- which would indicate a raid.
+      if MagicDKP and MagicDKP.MINOR_VERSION >= 105 and (not MagicDKP.HasActiveRaid or MagicDKP:HasActiveRaid()) then
+	 MagicDKP:HandleLoot(data.recipient, tonumber(match(data.item, ".*|Hitem:(%d+):")), 1, false, true, data.isBank, data.isDE, data.dkp) -- call MagicDKP
+      end
+      if db.announceLoot then
+	 clear().player = data.recipient
+	 info.item = data.link
+	 info.postfix = (data.isDE and L[" for disenchanting"]) or (data.isBank and L[" for the guild bank"]) or (data.isRandom and L[" from a random roll"]) or  ""
+      end
    end
 end
 
