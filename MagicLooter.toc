@@ -1,4 +1,4 @@
-## Interface: 30100
+## Interface: 30200
 ## Title: Magic Looter
 ## Notes: A loot distribution addon meant to improve master looting during raids.
 ## Author: NeoTron
