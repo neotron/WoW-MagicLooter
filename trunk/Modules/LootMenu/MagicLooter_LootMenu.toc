@@ -9,5 +9,5 @@
 ## RequiredDeps: MagicLooter
 ## OptionalDeps: Ace3
 
-Libs\AceHook-3,0\AceHook-3.0.xml
+Libs\AceHook-3.0\AceHook-3.0.xml
 LootMenu.lua
