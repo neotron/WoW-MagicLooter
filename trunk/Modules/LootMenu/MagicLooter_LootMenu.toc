@@ -1,4 +1,4 @@
-## Interface: 40300
+## Interface: 50001
 ## Title: Magic Looter - Loot Menu
 ## Notes: A Master Loot menu replacement addon
 ## Author: NeoTron
