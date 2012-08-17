@@ -31,7 +31,8 @@ local fmt = string.format
 local floor = math.floor
 local match = string.match
 local gsub = string.gsub
-
+local GetNumGroupMembers = GetNumGroupMembers
+local IsInRaid = IsInRaid
 local CLASS_COLORS = {}
 local players, playerClass = {}, {}
 local classList = {}
@@ -182,7 +183,7 @@ function module:Dropdown_OnLoad(level)
    if not level then level = 1 end
    if level == 1 then 
       module:InsertLootItem(info)
-      if GetNumRaidMembers() > 0 then
+      if IsInRaid() then
 	 module:BuildRaidMenu(level)
       else
 	 module:BuildPartyMenu(level)
@@ -451,8 +452,8 @@ do
       for id in pairs(playerClass) do playerClass[id] = nil end
       for id in pairs(classList) do classList[id] = nil end
       local id, name, class, className
-      if GetNumRaidMembers() > 0 then
-	 for id = 1,GetNumRaidMembers() do
+      if IsInRaid() then
+	 for id = 1,GetNumGroupMembers() do
 	    name, _, _, _, className, class, status = GetRaidRosterInfo(id)
 	    if name and status ~= PLAYER_OFFLINE then 
 	       if not class then
