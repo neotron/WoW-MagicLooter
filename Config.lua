@@ -32,161 +32,169 @@ local LDB = LibStub("LibDataBroker-1.1", true)
 local options, db
 
 local function UpdateUpvalues()
-   db = mod.db.profile         -- profile data
+    db = mod.db.profile         -- profile data
 end
 
 function mod:NotifyChange()
-   UpdateUpvalues()
-   R:NotifyChange(L["Magic Looter"])
+    UpdateUpvalues()
+    R:NotifyChange(L["Magic Looter"])
 end
 
-
 mod.lootThresholds = {
-   [2] = ITEM_QUALITY2_DESC, 
-   [3] = ITEM_QUALITY3_DESC, 
-   [4] = ITEM_QUALITY4_DESC, 
-   [5] = ITEM_QUALITY5_DESC
+    [2] = ITEM_QUALITY2_DESC,
+    [3] = ITEM_QUALITY3_DESC,
+    [4] = ITEM_QUALITY4_DESC,
+    [5] = ITEM_QUALITY5_DESC
 }
 
 -- config options
 options = {
-   type = "group",
-   name = L["Options"],
-   handler = mod,
-   set = "SetProfileParam",
-   get = "GetProfileParam", 
-   args = {
-      autoLootThreshold = {
-	 type = "select",
-	 name = L["Auto Loot Threshold"],
-	 desc = L["Only auto loot items below and including the selected rarity."],
-	 values = mod.lootThresholds, 
-	 order = 1, 
-      }, 
-      disenchantThreshold = {
-	 type = "select",
-	 name = L["Disenchant Threshold"],
-	 desc = L["Only consider items at or below this threshold as disenchantable. Items not considered disenchantable will be auto looted using the banker list instead of the disenchanter list."],
-	 values = mod.lootThresholds, 
-	 order = 1, 
-      },
-      spacer1 = {
-	 type = "description",
-	 name = "",
-	 width = "full",
-	 order = 5, 
-      },
-      disenchanterList = {
-	 type = "input",
-	 multiline = true,
-	 name = L["Disenchanter Priority List"],
-	 desc = L["A newline separated list of disenchanters. All disenchantable loot will be given to the people on the list in the order they appear. If none of the names are valid loot targets, the loot will be given to the player."],
-	 order = 10, 
-      },
-      bankerList = {
-	 type = "input",
-	 multiline = true,
-	 name = L["Banker Priority List"],
-	 desc = L["A newline separated list of bankers. All loot that isn't disenchantable will be given to the people on the list in the order they appear. If none of the names are valid loot targets, the loot will be given to the player."],
-	 order = 10,
-      },
-      spacer2 = {
-	 type = "description",
-	 name = "",
-	 width = "full",
-	 order = 20
-      },
-      minimapIcon = {
-	 type = "toggle",
-	 width ="full",
-	 name = L["Enable Minimap Icon"],
-	 desc = L["Show an icon to open the Magic Looter config at the minimap."],
-	 get = function() return not db.minimapIcon.hide end,
-	 set = function(info, value) db.minimapIcon.hide = not value LDBIcon[value and "Show" or "Hide"](LDBIcon, "MagicLooter") end,
-	 disabled = function() return not LDBIcon end,
-      },
-      announceLoot = {
-	 type = "toggle",
-	 name = L["Announce Loot Recipients"],
-	 desc = L["Print a massage, only visible by you, when Magic Looter autoloots an item."],
-	 width ="full",
-      },
-      autoloot = {
-	 type = "toggle",
-	 width ="full",
-	 name = L["Enable Auto Loot"],
-	 desc = L["Automatically loot items for disenchanting and banking if they fall within the specified thresholds. If disabled, you can still use the smart looting using the MagicLooter Loot Menu addon."],
-      },
-   }
+    type = "group",
+    name = L["Options"],
+    handler = mod,
+    set = "SetProfileParam",
+    get = "GetProfileParam",
+    args = {
+        autoLootThreshold = {
+            type = "select",
+            name = L["Auto Loot Threshold"],
+            desc = L["Only auto loot items below and including the selected rarity."],
+            values = mod.lootThresholds,
+            order = 1,
+        },
+        disenchantThreshold = {
+            type = "select",
+            name = L["Disenchant Threshold"],
+            desc = L["Only consider items at or below this threshold as disenchantable. Items not considered disenchantable will be auto looted using the banker list instead of the disenchanter list."],
+            values = mod.lootThresholds,
+            order = 1,
+        },
+        spacer1 = {
+            type = "description",
+            name = "",
+            width = "full",
+            order = 5,
+        },
+        disenchanterList = {
+            type = "input",
+            multiline = true,
+            name = L["Disenchanter Priority List"],
+            desc = L["A newline separated list of disenchanters. All disenchantable loot will be given to the people on the list in the order they appear. If none of the names are valid loot targets, the loot will be given to the player."],
+            order = 10,
+        },
+        bankerList = {
+            type = "input",
+            multiline = true,
+            name = L["Banker Priority List"],
+            desc = L["A newline separated list of bankers. All loot that isn't disenchantable will be given to the people on the list in the order they appear. If none of the names are valid loot targets, the loot will be given to the player."],
+            order = 10,
+        },
+        spacer2 = {
+            type = "description",
+            name = "",
+            width = "full",
+            order = 20
+        },
+        minimapIcon = {
+            type = "toggle",
+            width = "full",
+            name = L["Enable Minimap Icon"],
+            desc = L["Show an icon to open the Magic Looter config at the minimap."],
+            get = function()
+                return not db.minimapIcon.hide
+            end,
+            set = function(info, value)
+                db.minimapIcon.hide = not value
+                LDBIcon[value and "Show" or "Hide"](LDBIcon, "MagicLooter")
+            end,
+            disabled = function()
+                return not LDBIcon
+            end,
+        },
+        announceLoot = {
+            type = "toggle",
+            name = L["Announce Loot Recipients"],
+            desc = L["Print a massage, only visible by you, when Magic Looter autoloots an item."],
+            width = "full",
+        },
+        autoloot = {
+            type = "toggle",
+            width = "full",
+            name = L["Enable Auto Loot"],
+            desc = L["Automatically loot items for disenchanting and banking if they fall within the specified thresholds. If disabled, you can still use the smart looting using the MagicLooter Loot Menu addon."],
+        },
+    }
 }
 
 function mod:SetProfileParam(var, value)
-   local varName = var[#var]
-   if varName == "disenchanterList" or varName == "bankerList" then
-      local newValues = {}
-      for _,player in ipairs(  { strsplit("\n", value) } ) do 
-	 player = player:lower():trim():gsub("^.", string.upper)
-	 if strlen(player) then
-	    newValues[#newValues + 1] = player
-	 end
-      end
-      value = newValues
-   end
-      
-   db[varName] = value
+    local varName = var[#var]
+    if varName == "disenchanterList" or varName == "bankerList" then
+        local newValues = {}
+        for _, player in ipairs({ strsplit("\n", value) }) do
+            player = player:lower():trim():gsub("^.", string.upper)
+            if strlen(player) then
+                newValues[#newValues + 1] = player
+            end
+        end
+        value = newValues
+    end
+
+    db[varName] = value
 end
 
-function mod:GetProfileParam(var) 
-   local varName = var[#var]
-   if varName == "disenchanterList" or varName == "bankerList" then
-      return strjoin("\n", unpack(db[varName]))
-   end
-   return db[varName]
+function mod:GetProfileParam(var)
+    local varName = var[#var]
+    if varName == "disenchanterList" or varName == "bankerList" then
+        return strjoin("\n", unpack(db[varName]))
+    end
+    return db[varName]
 end
 
 function mod:OptReg(optname, tbl, dispname, cmd)
-   local regtable
-   if dispname then
-      optname = "Magic Looter"..optname
-      AC:RegisterOptionsTable(optname, tbl, cmd)
-      if not cmd then
-	 regtable = ACD:AddToBlizOptions(optname, dispname, L["Magic Looter"])
-      end
-   else
-      AC:RegisterOptionsTable(optname, tbl, cmd)
-      if not cmd then
-	 regtable = ACD:AddToBlizOptions(optname, L["Magic Looter"])
-      end
-   end
-   return regtable
+    local regtable
+    if dispname then
+        optname = "Magic Looter" .. optname
+        AC:RegisterOptionsTable(optname, tbl, cmd)
+        if not cmd then
+            regtable = ACD:AddToBlizOptions(optname, dispname, L["Magic Looter"])
+        end
+    else
+        AC:RegisterOptionsTable(optname, tbl, cmd)
+        if not cmd then
+            regtable = ACD:AddToBlizOptions(optname, L["Magic Looter"])
+        end
+    end
+    return regtable
 end
 
 function mod:RegisterModuleOptions(module, options)
-   return mod:OptReg(": "..module, options, options.name)
+    return mod:OptReg(": " .. module, options, options.name)
 end
 
 function mod:SetupOptions()
-   mod.configFrame = mod:OptReg("Magic Looter", options)
-   mod.profileFrame = mod:OptReg(": Profiles", DBOpt:GetOptionsTable(mod.db), L["Profiles"])
-   mod:OptReg("Magic Looter CmdLine", {
-		 name = "Command Line",
-		 type = "group",
-		 args = {
-		    config = {
-		       type = "execute",
-		       name = L["Show configuration dialog"],
-		       func = function() mod:ToggleConfigDialog() end,
-		       dialogHidden = true
-		    },
-		 }
-	      }, nil,  { "mloot", "magiclooter" })
+    mod.configFrame = mod:OptReg("Magic Looter", options)
+    mod.profileFrame = mod:OptReg(": Profiles", DBOpt:GetOptionsTable(mod.db), L["Profiles"])
+    mod:OptReg("Magic Looter CmdLine", {
+        name = "Command Line",
+        type = "group",
+        args = {
+            config = {
+                type = "execute",
+                name = L["Show configuration dialog"],
+                func = function()
+                    mod:ToggleConfigDialog()
+                end,
+                dialogHidden = true
+            },
+        }
+    }, nil, { "mloot", "magiclooter" })
 end
 
 function mod:OpenConfigMenu()
---   LibStub("LibDropdown-1.0"):OpenAce3Menu(options)
+    --   LibStub("LibDropdown-1.0"):OpenAce3Menu(options)
 end
 
 function mod:ToggleConfigDialog()
-   InterfaceOptionsFrame_OpenToCategory(mod.profileFrame)
-   InterfaceOptionsFrame_OpenToCategory(mod.configFrame)
+    InterfaceOptionsFrame_OpenToCategory(mod.profileFrame)
+    InterfaceOptionsFrame_OpenToCategory(mod.configFrame)
 end
