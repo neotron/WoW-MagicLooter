@@ -1,6 +1,6 @@
 # Magic Looter for WoW 
 
-## What is Magic Looter?</strong>
+## What is Magic Looter?
 
 Magic Looter is an addon to make master looting easier to manage. Specifically it will automatically loot Bind-on-Equip or non-binding items to a configured prioritized set of players (based on who's in the raid).
 
