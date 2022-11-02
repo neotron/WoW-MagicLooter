@@ -134,31 +134,35 @@ function mod:CheckLoot()
     end -- not using master looter
 
     -- Build a list of all master loot candidates
-    for ci = 1, 40 do
-        local candidate = GetMasterLootCandidate(ci)
-        if candidate then
-            mod.masterLootCandidates[candidate] = ci
-            mod.sortedLootCandidates[#mod.sortedLootCandidates + 1] = candidate
+    for slot = 1, GetNumLootItems() do
+        for ci = 1, GetNumGroupMembers() do
+            local candidate = GetMasterLootCandidate(slot, ci)
+            if candidate and not mod.masterLootCandidates[candidate] then
+                mod.masterLootCandidates[candidate] = ci
+                mod.sortedLootCandidates[#mod.sortedLootCandidates + 1] = candidate
+            end
         end
     end
     tsort(mod.sortedLootCandidates)
     if db.autoloot then
         for slot = 1, GetNumLootItems() do
             local link = GetLootSlotLink(slot)
-            if link then
-                local _, _, _, quality = GetLootSlotInfo(slot)
+            local _, _, _, _, quality = GetLootSlotInfo(slot)
+            if link and quality then
                 local bind = mod:GetBindOn(link)
-                if bind ~= "pickup" and quality <= db.autoLootThreshold and quality >= GetLootThreshold() then
+                if bind ~= "pickup"
+                        and quality <= db.autoLootThreshold
+                        and quality >= GetLootThreshold() then
                     local recipient
                     if mod:IsDisenchantable(link) then
                         recipient = mod:GetDisenchantLootCandidateID()
                         if db.announceLoot then
-                            mod:Print(string.format(L["Auto-looting %s to %s for disenchanting."], link, tostring(GetMasterLootCandidate(recipient))))
+                            mod:Print(string.format(L["Auto-looting %s to %s for disenchanting."], link, tostring(GetMasterLootCandidate(slot, recipient))))
                         end
                     else
                         recipient = mod:GetBankLootCandidateID()
                         if recipient and db.announceLoot then
-                            mod:Print(string.format(L["Auto-looting %s to %s for banking."], link, tostring(GetMasterLootCandidate(recipient))))
+                            mod:Print(string.format(L["Auto-looting %s to %s for banking."], link, tostring(GetMasterLootCandidate(slot, recipient))))
                         end
                     end
                     if not recipient then
@@ -309,11 +313,14 @@ do
 end
 
 function mod:SendChatMessage(message, destination)
+    local inRaid = UnitInRaid("player")
     if destination == "RW" then
-        destination = (IsRaidLeader() or IsRaidOfficer()) and "RAID_WARNING" or "GROUP"
+        destination = (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player"))
+                and inRaid and "RAID_WARNING" or "GROUP"
     end
     if destination == "GROUP" then
-        destination = GetNumRaidMembers() > 0 and "RAID" or "PARTY"
+        destination = inRaid and "RAID" or "PARTY"
     end
+    print("Sending chat message to", destination)
     SendChatMessage(message, destination)
 end

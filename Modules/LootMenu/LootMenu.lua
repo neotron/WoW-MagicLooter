@@ -23,7 +23,6 @@ along with MagicLooter.  If not, see <http://www.gnu.org/licenses/>.
 local MODULE_NAME = "LootMenu"
 local mod = MagicLooter
 local module = mod:NewModule(MODULE_NAME, "AceHook-3.0", "AceEvent-3.0", "AceTimer-3.0")
-local LM = mod:GetModule("LootMenu")
 local L = LibStub("AceLocale-3.0"):GetLocale("MagicLooter", false)
 
 local tsort = table.sort
@@ -83,7 +82,7 @@ function module:OnInitialize()
         text = CONFIRM_LOOT_DISTRIBUTION,
         button1 = YES,
         button2 = NO,
-        OnAccept = function(self, data)
+        OnAccept = function(_, data)
             module:ReallyAssignLoot(data)
         end,
         timeout = 0,
@@ -106,7 +105,7 @@ end
 
 function module:OnEnable()
     -- Hook into the loot frame event handler
-    module:SecureHook("LootFrame_OnEvent", "OnEvent")
+    module:RawHook("MasterLooterFrame_Show", true)
     module:RegisterEvent("OPEN_MASTER_LOOT_LIST", "ShowMenu")
     module:RegisterEvent("GROUP_ROSTER_UPDATE", "UpdatePlayers")
     module:RegisterEvent("LOOT_SLOT_CLEARED", "LootSlotCleared")
@@ -119,6 +118,10 @@ function module:OnDisable()
     module:UnregisterEvent("PARTY_MEMBERS_CHANGED")
     module:UnregisterEvent("LOOT_SLOT_CLEARED")
     module:UnregisterEvent("LOOT_CLOSED")
+    module:Unhook("MasterLooterFrame_Show")
+end
+function module:MasterLooterFrame_Show()
+-- No-op, we don't want to show the standard frame.
 end
 
 function module:RegisterLootedItem(slotId)
@@ -140,15 +143,6 @@ function module:RegisterLootedItem(slotId)
             info.item = data.link
             info.postfix = (data.isDE and L[" for disenchanting"]) or (data.isBank and L[" for the guild bank"]) or (data.isRandom and L[" from a random roll"]) or ""
         end
-    end
-end
-
-function module:OnEvent(this, event, slotId, ...)
-    local method, id = GetLootMethod()
-    if event == "OPEN_MASTER_LOOT_LIST" then
-        return module:ShowMenu()
-    elseif event == "UPDATE_MASTER_LOOT_LIST" then
-        --
     end
 end
 
@@ -176,7 +170,7 @@ function module:InsertLootItem(info)
     if not link then
         return nil
     end
-    local icon, name, quantity, quality = GetLootSlotInfo(LootFrame.selectedSlot)
+    local icon, name, quantity, _, quality = GetLootSlotInfo(LootFrame.selectedSlot)
     if quantity > 1 then
         info.text = fmt("%s%s|rx%d", ITEM_QUALITY_COLORS[quality].hex, name, quantity)
     else
@@ -403,6 +397,8 @@ function module:AssignLoot(frame, recipient)
     elseif recipient == "_disenchant" then
         isDE = true
         mlc = mod:GetDisenchantLootCandidateID()
+        if not mlc then
+
         recipient = GetMasterLootCandidate(mlc)
     else
         if not recipient then
@@ -475,9 +471,10 @@ do
         for id in pairs(classList) do
             classList[id] = nil
         end
-        local id, name, class, className
-        if IsInRaid() then
-            for id = 1, GetNumGroupMembers() do
+        local name, class, className
+        local groupSize = GetNumGroupMembers()
+        if groupSize > 0 and UnitInRaid("player") then
+            for id = 1, groupSize do
                 name, _, _, _, className, class, status = GetRaidRosterInfo(id)
                 if name and status ~= PLAYER_OFFLINE then
                     if not class then
