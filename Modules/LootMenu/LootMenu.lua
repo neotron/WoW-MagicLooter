@@ -398,7 +398,9 @@ function module:AssignLoot(frame, recipient)
         isDE = true
         mlc = mod:GetDisenchantLootCandidateID()
         if not mlc then
-
+            module:AssignLoot(frame, "_banker")
+            return
+        end
         recipient = GetMasterLootCandidate(mlc)
     else
         if not recipient then
